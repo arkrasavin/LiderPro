@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Register</title></head>
+<body>
+    <h2>Register</h2>
+    {% if error %}
+    <p style="color:red">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="/register">
+        Username: <input type="text" name="username"><br>
+        Password: <input type="password" name="password"><br>
+        Role: 
+        <select name="role">
+            <option value="employee">Employee</option>
+            <option value="observer">Observer</option>
+            <option value="admin">Admin</option>
+        </select><br>
+        <input type="submit" value="Register">
+    </form>
+</body>
+</html>

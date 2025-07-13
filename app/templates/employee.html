@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Employee Dashboard</h1>
+<p>Welcome, {{ user.username }}!</p>
+
+<form method="post" action="/checkin"><button type="submit">Check In</button></form>
+<form method="post" action="/checkout"><button type="submit">Check Out</button></form>
+
+<h3>Time Entries:</h3>
+<ul>
+    {% for entry in entries %}
+        <li>IN: {{ entry.check_in }} | OUT: {{ entry.check_out or "..." }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

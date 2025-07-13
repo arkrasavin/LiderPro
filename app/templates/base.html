@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>{% block title %}Tracker{% endblock %}</title></head>
+<body>
+    <nav>
+        <a href="/employee">Employee</a> |
+        <a href="/observer">Observer</a> |
+        <a href="/admin">Admin</a> |
+        <a href="/">Login</a>
+    </nav>
+    <hr>
+    {% block content %}{% endblock %}
+</body>
+</html>
