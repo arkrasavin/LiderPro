@@ -38,10 +38,10 @@ def get_employees_data(db: Session):
     return employees
 
 
-@dashboard_router.get("/admin", response_class=HTMLResponse)
-def admin_dashboard(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    employees = get_employees_data(db=db)
-    return templates.TemplateResponse("admin.html", {"request": request, "user": user, "employees": employees})
+# @dashboard_router.get("/admin", response_class=HTMLResponse)
+# def admin_dashboard(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+#     employees = get_employees_data(db=db)
+#     return templates.TemplateResponse("admin.html", {"request": request, "user": user, "employees": employees})
 
 
 @dashboard_router.get("/observer", response_class=HTMLResponse)

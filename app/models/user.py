@@ -26,8 +26,5 @@ class User(Base):
 
     employee_info = relationship("EmployeeInfo", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
-    training = relationship("Training", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    statistics = relationship("Statistics", back_populates="user", uselist=False, cascade="all, delete-orphan")
-
     def is_admin(self):
         return self.role == UserRole.admin

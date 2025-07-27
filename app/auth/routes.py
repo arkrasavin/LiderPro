@@ -23,7 +23,7 @@ async def login(request: Request, login: str = Form(...), password: str = Form(.
         return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
 
     role_redirects = {
-        UserRole.admin: "/admin",
+        UserRole.admin: "/api/users",
         UserRole.observer: "/observer",
         UserRole.employee: "/employee"
     }
