@@ -3,10 +3,14 @@
 <head><title>{% block title %}Tracker{% endblock %}</title></head>
 <body>
     <nav>
-        <a href="/employee">Employee</a> |
-        <a href="/observer">Observer</a> |
-        <a href="/admin">Admin</a> |
-        <a href="/">Login</a>
+        <a href="/profile">Мой профиль</a> |
+        {% if request.cookies.get("session") %}
+        <div class="logout-section">
+            <form action="/logout" method="get">
+                <button type="submit" class="btn btn-logout">Выйти</button>
+            </form>
+        </div>
+        {% endif %}
     </nav>
     <hr>
     {% block content %}{% endblock %}

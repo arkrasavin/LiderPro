@@ -6,7 +6,21 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from app.models.user import Base
+from app.models.base import Base
+
+from app.models.user import User
+from app.models.employee_info import EmployeeInfo
+from app.models.training import Training
+from app.models.statistics import Statistics
+from app.models.admin import Admin
+from app.models.observer import Observer
+from app.models.department import Department
+from app.models.association import observer_department, employee_department
+
+
+
+
+
 
 config = context.config
 fileConfig(config.config_file_name)
