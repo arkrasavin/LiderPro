@@ -7,34 +7,12 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_db
 from app.core.session import get_current_user
 from app.models.user import User
-from app.models.employee_info import EmployeeInfo
-from app.models.training import Training
+
+from app.api.admin.crud import get_employees_data
 
 
 router = APIRouter(tags=["Admin"])
 templates = Jinja2Templates(directory="app/templates")
-
-
-def get_employees_data(db: Session):
-    employees_data = db.query(
-        EmployeeInfo,
-        Training
-    ).outerjoin(
-        Training,
-        EmployeeInfo.id == Training.employee_id
-    ).order_by(
-        EmployeeInfo.name
-    ).all()
-    print(employees_data)
-
-    employees = []
-    for emp_info, edu_info in employees_data:
-        employees.append({
-            "employee": emp_info,
-            "education": edu_info if edu_info else None
-        })
-    print(employees)
-    return employees
 
 
 @router.get("/", response_class=HTMLResponse)
