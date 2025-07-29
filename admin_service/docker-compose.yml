@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: hrm
+    ports: [ "5432:5432" ]
+
+  admin_service:
+    build: .
+    depends_on: [ db ]
+    ports: [ "8000:8000" ]
+    environment:
+      - DATABASE_URL=postgresql+psycopg://user:pass@db:5432/hrm
