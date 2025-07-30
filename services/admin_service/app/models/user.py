@@ -3,6 +3,7 @@
 # а не через ORM, поэтому убрал их из модели.
 # Поля логин и email в модели избыточны, тк email и есть логин.
 
+
 from sqlalchemy import Column, Integer, String, Enum, Boolean, Table, ForeignKey, \
     DateTime, func
 
