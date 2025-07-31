@@ -1,11 +1,9 @@
 from fastapi import FastAPI
+from app.api import auth
+from app.core.config import get_settings
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import users
-from .core.config import get_settings
-
-app = FastAPI(title="HR Admin Service")
-
+app = FastAPI(title="Auth Service")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,
@@ -13,4 +11,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(users.router)
+app.include_router(auth.router)
