@@ -1,7 +1,10 @@
+from typing import List
+
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from services.shared_schemas import UserRead
 from ..core.deps import require_role, get_db
 from ..core.security import hash_password
 from ..models.user import User
@@ -37,13 +40,23 @@ def create_user(payload: dict, db: Session = Depends(get_db)):
     }
 
 
+@router.get(
+    "",
+    response_model=List[UserRead],
+    dependencies=[Depends(require_role("admin"))]
+)
 def list_users(db: Session = Depends(get_db)):
-    """Список всех учетных записей (только admin)"""
+    """Список всех учетных записей (только для admin)"""
     return db.scalars(select(User)).all()
 
 
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_role("admin"))]
+)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """Удаление пользователя (только admin)"""
+    """Удаление пользователя (только для admin)"""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(404, f"User not found")

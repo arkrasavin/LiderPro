@@ -6,7 +6,7 @@ from pydantic import PostgresDsn
 class Settings(BaseSettings):
     database_url: PostgresDsn = "postgresql+psycopg://user:pass@db:5432/hrm"
     secret_key: str = "CHANGE_ME"
-    access_token_expire_minutes: int = 60
+    access_token_expire_minutes: int = 60 # время "жизни" токена
     cors_origins: list[str] = ["http://localhost:5173"]
 
     class Config:
