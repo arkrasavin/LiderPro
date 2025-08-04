@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 
 from ..core.config import get_settings
 
-ALGORITHMS = "HS256"
+ALGORITHM = "HS256"
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -22,15 +22,15 @@ def create_access_token(sub: str) -> str:
     return jwt.encode(
         {
             "subject": sub,
-            "exp": datetime.now() + timedelta(munutes=cfg.access_token_expire_minutes)
+            "exp": datetime.now() + timedelta(minutes=cfg.access_token_expire_minutes)
         },
         cfg.secret_key,
-        algorithm=ALGORITHMS,
+        algorithm=ALGORITHM,
     )
 
 
 def decode_access_token(token: str) -> str | None:
     try:
-        return jwt.secode(token, get_settings().secret_key, algorithm=[ALGORITHMS])["sub"]
+        return jwt.decode(token, get_settings().secret_key, algorithms=[ALGORITHM])["sub"]
     except JWTError:
         return None
