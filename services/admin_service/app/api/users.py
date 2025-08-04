@@ -25,7 +25,7 @@ def create_user(payload: dict, db: Session = Depends(get_db)):
     user = User(
         name=payload["name"],
         email=payload["email"],
-        hasged_password=hash_password(payload["password"]),
+        hashed_password=hash_password(payload["password"]),
         role=payload.get("role", "observer"),
     )
     db.add(user)
