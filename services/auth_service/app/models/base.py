@@ -1,5 +1,8 @@
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.ext.declarative import declarative_base
 
-
-class Base(DeclarativeBase):
-    ...
+Base = declarative_base()
+# from sqlalchemy.orm import DeclarativeBase
+#
+#
+# class Base(DeclarativeBase):
+#     ...

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { logout } from '@/api/auth';
+import { logout } from '@/routers/auth';
 
 const Header = () => {
   const navigate = useNavigate();

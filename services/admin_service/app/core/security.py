@@ -1,36 +1,36 @@
-from datetime import datetime, timedelta
-
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+from fastapi import HTTPException, status
+from jose import jwt, JWTError, ExpiredSignatureError
 
 from ..core.config import get_settings
-
-ALGORITHM = "HS256"
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from shared_schemas.security import TokenPayload
 
 
-def hash_password(raw: str) -> str:
-    return _pwd.hash(raw)
+def decode_token(token: str) -> TokenPayload:
+    """
+    Декодирует и валидирует токен JWT. Бросает 401 при ошибках
+    """
 
-
-def verify_password(raw: str, hashed: str) -> bool:
-    return _pwd.verify(raw, hashed)
-
-
-def create_access_token(sub: str) -> str:
-    cfg = get_settings()
-    return jwt.encode(
-        {
-            "subject": sub,
-            "exp": datetime.now() + timedelta(minutes=cfg.access_token_expire_minutes)
-        },
-        cfg.secret_key,
-        algorithm=ALGORITHM,
-    )
-
-
-def decode_access_token(token: str) -> str | None:
+    settings = get_settings()
     try:
-        return jwt.decode(token, get_settings().secret_key, algorithms=[ALGORITHM])["sub"]
+        payload = jwt.decode(
+            token, settings.auth_secret_key,
+            algorithms=[settings.auth_algorithm]
+        )
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
     except JWTError:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+    try:
+        return TokenPayload.model_validate(payload)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )

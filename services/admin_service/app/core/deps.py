@@ -1,48 +1,38 @@
-from fastapi import Depends, HTTPException, Request, status
+from typing import Literal, Callable
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 
-from ..core.security import decode_access_token
-from ..db.session import SessionLocal
-from ..models.user import User
+from .config import get_settings
+from .security import decode_token
+from shared_schemas.security import TokenPayload
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
-
-
-def get_db():
-    """Подключение к БД и автоматическое закрытие сессии."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+_oauth = OAuth2PasswordBearer(tokenUrl=get_settings().oauth_token_url)
 
 
-def get_current_user(
-        token: str = Depends(oauth2_scheme),
-        db: Session = Depends(get_db)
-):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+def get_current_token_payload(token: str = Depends(_oauth)) -> TokenPayload:
+    """
+    Извлекает и валидирует токен из Authorization: Bearer <token>.
+    Возвращает TokenPayload.
+    """
 
-    user_id = decode_access_token(token)
-    if not user_id:
-        raise credentials_exception
-
-    user = db.get(User, int(user_id))
-    if not user:
-        raise credentials_exception
-
-    return user
+    payload = decode_token(token)
+    return payload
 
 
-def require_role(*roles: str):
-    def checker(user: User = Depends(get_current_user)):
-        if user.role not in roles:
+def require_roles(*roles: Literal["admin", "observer", "participant"]) -> Callable:
+    """
+    Использование:
+        @router.get("/secure", dependencies=[Depends(require_role("admin", "observer"))])
+    или
+        def endpoint(payload: TokenPayLoad = Depends(require_role("admin"))): ...
+    """
+
+    def _checker(
+            payload: TokenPayload = Depends(get_current_token_payload)
+    ) -> TokenPayload:
+        if payload.get("role") not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        return user
 
-    return checker
+        return payload
+
+    return _checker

@@ -1,34 +1,42 @@
-from sqlalchemy import engine_from_config, pool
+from __future__ import annotations
+
+import os
 from logging.config import fileConfig
-import sys
-from pathlib import Path
 
-from sqlalchemy.orm import context
+from alembic import context
+from sqlalchemy import create_engine, pool
 
-from ..app.models.base import Base
+from app.models.base import Base  # noqa: F401
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+from app.models import user  # noqa: F401
 
 config = context.config
-fileConfig(config.config_file_name)
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
 target_metadata = Base.metadata
 
 
-def run_migrations_offline():
-    context.configure(url=config.get_main_option("sqlalchemy.url"),
-                      target_metadata=target_metadata,
-                      literal_binds=True)
+def get_db_url() -> str:
+    """URL БД берём из ENV, иначе из alembic.ini."""
+    return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+
+
+def run_migrations_offline() -> None:
+    url = get_db_url()
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
-def run_migrations_online():
-    connectable = engine_from_config(config.get_section(config.config_ini_section),
-                                     prefix='sqlalchemy.',
-                                     poolclass=pool.NullPool)
+def run_migrations_online() -> None:
+    connectable = create_engine(get_db_url(), poolclass=pool.NullPool)
     with connectable.connect() as connection:
-        context.configure(connection=connection,
-                          target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
 

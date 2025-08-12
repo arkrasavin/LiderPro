@@ -135,7 +135,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+services/auth_service/app/.env
 .envrc
 .venv
 env/

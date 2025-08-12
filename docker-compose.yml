@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: liderdb
+    ports: [ "5432:5432" ]
+
+  auth_service:
+    build: ./services/auth_service
+    depends_on: [ db ]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - PYTHONPATH=/app
+      - ALEMBIC_CONFIG=/app/alembic.ini
+      - AUTH_SECRET_KEY=SECRET_KEY
+    volumes:
+      - ./services/auth_service:/app
+      - ./shared_schemas:/app/shared_schemas
+    ports: [ "8001:8001" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+  admin_service:
+    build: ./services/admin_service
+    depends_on: [db]
+    environment:
+        - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+        - PYTHONPATH=/app
+        - ALEMBIC_CONFIG=/app/alembic.ini
+        - AUTH_SECRET_KEY=SECRET_KEY
+    volumes:
+      - ./services/admin_service:/app
+      - ./shared_schemas:/app/shared_schemas
+    ports: [ "8000:8000" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

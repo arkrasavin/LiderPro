@@ -3,5 +3,15 @@ from sqlalchemy.orm import sessionmaker
 
 from ..core.config import get_settings
 
-engine = create_engine(str(get_settings().database_url), echo=False, future=True)
-SessionLocal = sessionmaker(engine, expire_on_commit=False)
+SQLALCHEMY_DATABASE_URL = str(get_settings().database_url)
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
