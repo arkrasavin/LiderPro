@@ -53,6 +53,7 @@ docker logs <container_id>
 
 ### Миграции
 
+
 Требования:
 - контейнеры подняты: `docker compose up -d`
 - в `docker-compose.yml` прописаны `PYTHONPATH=/app`, `ALEMBIC_CONFIG=/app/alembic.ini` и volume: - `.:/app`
