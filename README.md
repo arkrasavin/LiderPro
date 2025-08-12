@@ -7,61 +7,61 @@
 В каждом приложении свой Dockerfile который его запускает и устанавливает requirements.
 
 
-##  docker
+### docker
 
 
-### Одновременная сборка и запуск контейнера:
-```bash
-docker compose up --build app
-```
+Одновременная сборка и запуск контейнера:
+    ```bash
+    docker compose up --build app
+    ```
 
-### Пересборка и перезапуск одновременно (флаг '-d' указывает на фоновый режим контейнера):
-```bash
-docker compose up --build -d
-```
+Пересборка и перезапуск одновременно (флаг '-d' указывает на фоновый режим контейнера):
+    ```bash
+    docker compose up --build -d
+    ```
 
-### Логи приложений docker compose
-```bash
-docker compose logs -f  # можно добавить имя приложения для более конкретных логов
-```
+Логи приложений docker compose
+    ```bash
+    docker compose logs -f  # можно добавить имя приложения для более конкретных логов
+    ```
 
-### Остановка и удаление запущенных контейнеров docker-compose:
-```bash
-docker compose down -v
-```
+Остановка и удаление запущенных контейнеров docker-compose:
+    ```bash
+    docker compose down -v
+    ```
 
-### Просмотр запущенных контейнеров (с флагом '-a' покажет все существующие):
-```bash
-docker ps
-```
+Просмотр запущенных контейнеров (с флагом '-a' покажет все существующие):
+    ```bash
+    docker ps
+    ```
 
-### Перезапуск контейнера:
-```bash
-docker restart <container_id>
-```
+Перезапуск контейнера:
+    ```bash
+    docker restart <container_id>
+    ```
 
-### Остановить контейнер:
-```bash
-docker stop <container_id>
-```
+Остановить контейнер:
+    ```bash
+    docker stop <container_id>
+    ```
 
-### Логи и диагностика контейнера:
-```bash
-docker logs <container_id>
-```
+Логи и диагностика контейнера:
+    ```bash
+    docker logs <container_id>
+    ```
 
 
-## Миграции
+### Миграции
 
-> Требования:
-> - контейнеры подняты: `docker compose up -d`
-> - в `docker-compose.yml` прописаны `PYTHONPATH=/app`, `ALEMBIC_CONFIG=/app/alembic.ini` и volume: - `.:/app`
+Требования:
+    - контейнеры подняты: `docker compose up -d`
+    - в `docker-compose.yml` прописаны `PYTHONPATH=/app`, `ALEMBIC_CONFIG=/app/alembic.ini` и volume: - `.:/app`
 
-### Сгенерировать миграцию
-```bash
-docker compose exec admin_service alembic revision --autogenerate -m "комментарий"
-```
-### Применить миграции
-```bash
-docker compose exec admin_service alembic upgrade head
-```
+Сгенерировать миграцию
+    ```bash
+    docker compose exec admin_service alembic revision --autogenerate -m "комментарий"
+    ```
+Применить миграции
+    ```bash
+    docker compose exec admin_service alembic upgrade head
+    ```
