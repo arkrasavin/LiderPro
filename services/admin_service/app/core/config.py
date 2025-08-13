@@ -8,13 +8,20 @@ class Settings(BaseSettings):
     auth_algorithm: str = "HS256"
     oauth_token_url: str = "/auth/login"
     database_url: PostgresDsn = "postgresql+psycopg2://user:pass@db:5432/liderdb"
-    # access_token_expire_minutes: int = 60       # время "жизни" токена
     cors_origins: list[str] = [
-        "http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
     ]
+
+    auth_provider: str = "local"  # local | keycloak
+    keycloak_issuer: str = "http://keycloak:8080/realms/liderpro"
+    keycloak_audience: str = "backend"
+    keycloak_jwks_url: str = "http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs"
 
     class Config:
         env_file = ".env"
+        case_sensitive = False
 
 
 @lru_cache

@@ -15,6 +15,15 @@ services:
       - PYTHONPATH=/app
       - ALEMBIC_CONFIG=/app/alembic.ini
       - AUTH_SECRET_KEY=SECRET_KEY
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_REALM=liderpro
+      - KEYCLOAK_BASE=http://keycloak:8080
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/token
+      - KEYCLOAK_CLIENT_ID=backend
+      - KEYCLOAK_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
+      - KEYCLOAK_ADMIN_CLIENT_ID=backend
+      - KEYCLOAK_ADMIN_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
     volumes:
       - ./services/auth_service:/app
       - ./shared_schemas:/app/shared_schemas
@@ -23,14 +32,48 @@ services:
 
   admin_service:
     build: ./services/admin_service
-    depends_on: [db]
+    depends_on: [ db ]
     environment:
-        - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
-        - PYTHONPATH=/app
-        - ALEMBIC_CONFIG=/app/alembic.ini
-        - AUTH_SECRET_KEY=SECRET_KEY
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - PYTHONPATH=/app
+      - ALEMBIC_CONFIG=/app/alembic.ini
+      - AUTH_SECRET_KEY=SECRET_KEY
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+
     volumes:
       - ./services/admin_service:/app
       - ./shared_schemas:/app/shared_schemas
     ports: [ "8000:8000" ]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  keycloak-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - kc_db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    depends_on: [ keycloak-db ]
+    command: [ "start-dev", "--import-realm" ]
+    environment:
+      KC_DB: postgres
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+volumes:
+  kc_db:
