@@ -1,5 +1,6 @@
+from email.header import Header
 from typing import Callable
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from .config import get_settings
@@ -9,8 +10,11 @@ from shared_schemas.security import TokenPayload
 _oauth = OAuth2PasswordBearer(tokenUrl=get_settings().oauth_token_url)
 
 
-def get_current_token_payload(token: str = Depends(_oauth)) -> TokenPayload:
-    return decode_token(token)
+def get_current_token_payload(
+        token: str = Depends(_oauth),
+        x_act_as: str | None = Header(None, alias="X-act-As")
+) -> TokenPayload:
+    return decode_token(token, request_role=x_act_as)
 
 
 def require_roles(*roles: str) -> Callable[[TokenPayload], TokenPayload]:

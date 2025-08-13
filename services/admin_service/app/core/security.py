@@ -15,12 +15,26 @@ _JWKS_CACHE: Dict[str, Any] = {}
 _JWKS_TS: float = 0.0
 _JWKS_TTL_SEC = 300
 
+_ALLOWED_ROLES = {"admin", "observer", "participant", "employee"}
+
+
+def _normalize_role(role: str) -> str:
+    return role.strip().lower()
+
+
+def _has_role(payload: Dict[str, Any], role: str) -> bool:
+    roles = payload.get("realm_access", {}).get("roles", []) or []
+    norm = {_normalize_role(elem) for elem in roles}
+    return _normalize_role(role) in norm
+
 
 def _load_jwks() -> Dict[str, Any]:
     global _JWKS_CACHE, _JWKS_TS
     now = time()
+
     if _JWKS_CACHE and (now - _JWKS_TS) < _JWKS_TTL_SEC:
         return _JWKS_CACHE
+
     url = get_settings().keycloak_jwks_url
     try:
         resp = httpx.get(url, timeout=5.0)
@@ -28,14 +42,16 @@ def _load_jwks() -> Dict[str, Any]:
         _JWKS_CACHE = resp.json()
         _JWKS_TS = now
         return _JWKS_CACHE
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"JWKS fetch failed: {e}")
+
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"JWKS fetch failed: {exc}")
 
 
 def _pick_key(jwks: Dict[str, Any], kid: str) -> Optional[Dict[str, Any]]:
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
             return key
+
     return None
 
 
@@ -49,6 +65,7 @@ def _public_key_from_jwk(jwk_dict: Dict[str, Any]):
         cert_pem = "-----BEGIN CERTIFICATE-----\n" + x5c[
             0] + "\n-----END CERTIFICATE-----\n"
         cert = load_pem_x509_certificate(cert_pem.encode("utf-8"))
+
         return cert.public_key()
 
     n_b = base64url_decode(jwk_dict["n"].encode("utf-8"))
@@ -56,23 +73,42 @@ def _public_key_from_jwk(jwk_dict: Dict[str, Any]):
     n = int.from_bytes(n_b, "big")
     e = int.from_bytes(e_b, "big")
     pub_numbers = rsa.RSAPublicNumbers(e, n)
+
     return pub_numbers.public_key()
 
 
 def _map_role_from_keycloak(payload: Dict[str, Any]) -> str:
-    roles: List[str] = payload.get("realm_access", {}).get("roles", [])
-    normalized = set(r.lower() for r in roles)
+    roles: List[str] = payload.get("realm_access", {}).get("roles", []) or []
+    normalized = {_normalize_role(elem) for elem in roles}
     for candidate in ("admin", "observer", "participant", "employee"):
         if candidate in normalized:
             return "participant" if candidate == "employee" else candidate
+
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No allowed role")
 
 
-def _to_token_payload(payload: Dict[str, Any]) -> TokenPayload:
-    role = payload.get("role") or _map_role_from_keycloak(payload)
+def _choose_effective_role(payload: Dict[str, Any], request_role: Optional[str]) -> str:
+    """
+    Если пришел X-Act-As и пользователь реально обладает этой ролью - используем её.
+    Иначе - возвращаем default роль (_map_role_from_keycloak).
+    """
+    if request_role:
+        req = _normalize_role(request_role)
+        if req in _ALLOWED_ROLES and _has_role(payload, req):
+            return "participant" if req == "employee" else req
+
+    return _map_role_from_keycloak(payload)
+
+
+def _to_token_payload(
+        payload: Dict[str, Any],
+        request_role: Optional[str]
+) -> TokenPayload:
+    role = payload.get("role") or _choose_effective_role(payload, request_role)
     email = payload.get("email") or payload.get("preferred_username") or ""
     if not email:
         raise HTTPException(status_code=401, detail="Token has no email")
+
     return TokenPayload(
         sub=payload.get("sub"),
         email=email,
@@ -84,7 +120,7 @@ def _to_token_payload(payload: Dict[str, Any]) -> TokenPayload:
     )
 
 
-def decode_token(token: str) -> TokenPayload:
+def decode_token(token: str, request_role: Optional[str] = None) -> TokenPayload:
     settings = get_settings()
     if settings.auth_provider == "local":
         try:
@@ -94,7 +130,8 @@ def decode_token(token: str) -> TokenPayload:
                 algorithms=[settings.auth_algorithm],
                 options={"verify_aud": False},
             )
-            return _to_token_payload(payload)
+            return _to_token_payload(payload, request_role)
+
         except ExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Token expired")
         except JWTError:
@@ -115,7 +152,6 @@ def decode_token(token: str) -> TokenPayload:
         raise HTTPException(status_code=401, detail="No matching JWK key")
 
     public_key = _public_key_from_jwk(jwk_dict)
-
     try:
         payload = jwt.decode(
             token,
@@ -125,8 +161,9 @@ def decode_token(token: str) -> TokenPayload:
             issuer=settings.keycloak_issuer,
             options={"verify_at_hash": False},
         )
-        return _to_token_payload(payload)
+        return _to_token_payload(payload, request_role)
+
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
