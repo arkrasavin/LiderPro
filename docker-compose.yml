@@ -7,29 +7,6 @@ services:
       POSTGRES_DB: liderdb
     ports: [ "5432:5432" ]
 
-  auth_service:
-    build: ./services/auth_service
-    depends_on: [ db ]
-    environment:
-      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
-      - PYTHONPATH=/app
-      - ALEMBIC_CONFIG=/app/alembic.ini
-      - AUTH_SECRET_KEY=SECRET_KEY
-      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
-      - AUTH_PROVIDER=keycloak
-      - KEYCLOAK_REALM=liderpro
-      - KEYCLOAK_BASE=http://keycloak:8080
-      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/token
-      - KEYCLOAK_CLIENT_ID=backend
-      - KEYCLOAK_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
-      - KEYCLOAK_ADMIN_CLIENT_ID=backend
-      - KEYCLOAK_ADMIN_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
-    volumes:
-      - ./services/auth_service:/app
-      - ./shared_schemas:/app/shared_schemas
-    ports: [ "8001:8001" ]
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
-
   admin_service:
     build: ./services/admin_service
     depends_on: [ db ]
@@ -42,7 +19,6 @@ services:
       - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
       - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
       - KEYCLOAK_AUDIENCE=account
-
     volumes:
       - ./services/admin_service:/app
       - ./shared_schemas:/app/shared_schemas
@@ -74,6 +50,113 @@ services:
       - "8080:8080"
     volumes:
       - ./deploy/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+  auth_service:
+    build: ./services/auth_service
+    depends_on: [ db ]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - PYTHONPATH=/app
+      - ALEMBIC_CONFIG=/app/alembic.ini
+      - AUTH_SECRET_KEY=SECRET_KEY
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_REALM=liderpro
+      - KEYCLOAK_BASE=http://keycloak:8080
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/token
+      - KEYCLOAK_CLIENT_ID=backend
+      - KEYCLOAK_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
+      - KEYCLOAK_ADMIN_CLIENT_ID=backend
+      - KEYCLOAK_ADMIN_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
+    volumes:
+      - ./services/auth_service:/app
+      - ./shared_schemas:/app/shared_schemas
+    ports: [ "8011:8011" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload
+
+  employee_service:
+    build:
+      context: ./services/employees_service
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8012:8012" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8012 --reload
+
+  department_service:
+    build:
+      context: services/departments_service
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8013:8013" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8013 --reload
+
+  observer_service:
+    build:
+      context: ./services/observers_service
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8014:8014" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8014 --reload
+
+  trainings_service:
+    build:
+      context: ./services/trainings_service
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8015:8015" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8015 --reload
+
+  statistics_service:
+    build:
+      context: ./services/statistics_service
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8016:8016" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8016 --reload
+
+  ewallet_service:
+    build:
+      context: ./services/ewallet_service
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8017:8017" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8017 --reload
 
 volumes:
   kc_db:

@@ -1,22 +1,12 @@
 from typing import Literal, Optional, Union
 from pydantic import BaseModel, EmailStr
 
-ROLE = Literal["admin", "observer", "participant", "employee"]
+ROLE = Literal["admin", "observer", "participant"]
 
 
 class LoginForm(BaseModel):
     username: EmailStr
     password: str
-
-
-class TokenPayload(BaseModel):
-    sub: Union[str, int]
-    email: str
-    role: ROLE
-    exp: int
-    iat: Optional[int] = None
-    iss: Optional[str] = None
-    aud: Optional[Union[str, list[str]]] = None
 
 
 class TokenResponse(BaseModel):
@@ -25,3 +15,13 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int | None = None
     scope: str | None = None
+
+
+class TokenPayload(BaseModel):
+    sub: str | None = None
+    email: EmailStr | None = None
+    role: ROLE | None = None
+    exp: int | None = None
+    iat: int | None = None
+    iss: str | None = None
+    aud: Union[str, list[str], None] = None

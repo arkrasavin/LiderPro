@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends
 
 from ..core.deps import require_roles
-from shared_schemas.security import TokenPayload
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
+
 @router.get("/me")
-def me(payload: TokenPayload = Depends(require_roles("admin", "observer"))):
-    return {
+def me(payload=Depends(require_roles("admin"))):
+    out_dict = {
         "user_id": payload.sub,
         "email": payload.email,
-        "role": payload.role,
+        "role": payload.role
     }
+
+    return out_dict

@@ -1,4 +1,4 @@
-# emp_ind переедет в мкр-сервис employees_profile_service.
+# emp_ind переедет в мкр-сервис employees_service.
 # Связи is_active, login, emp_ind будут через REST,
 # а не через ORM, поэтому убрал их из модели.
 # Поля логин и email в модели избыточны, тк email и есть логин.

@@ -1,11 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api import statistics
 from .core.config import get_settings
-
-app = FastAPI(title="Statistics service")
+from .db.session import engine
+from .models.base import Base
 
 settings = get_settings()
+
+
+async def lifespan(app: FastAPI):
+    yield
+    try:
+        engine.dispose()
+    except Exception as exc:
+        print(f"Engine dispose error: {exc}")
+
+
+app = FastAPI(title="Statistics service", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -13,3 +26,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(statistics.router)

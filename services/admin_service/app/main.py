@@ -3,10 +3,21 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api import users, health
 from .core.config import get_settings
-
-app = FastAPI(title="Admin service")
+from .db.session import engine
 
 settings = get_settings()
+
+
+async def lifespan(app: FastAPI):
+    yield
+    try:
+        engine.dispose()
+    except Exception as exc:
+        print(f"Engine dispose error: {exc}")
+
+
+app = FastAPI(title="Admin service", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

@@ -1,25 +1,29 @@
-from enum import Enum
+from typing import Optional
 
-from pydantic import BaseModel, EmailStr, constr, Field
+from pydantic import BaseModel, EmailStr
 
-role = constr(pattern=r"^(admin|observer|employee)$")
-
-
-class Role(str, Enum):
-    admin = "admin"
-    employee = "employee"
-    observer = "observer"
+from .security import ROLE
 
 
-class UserCreate(BaseModel):
-    name: str = Field(..., max_length=255)
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-    role: Role
-
-
-class UserRead(BaseModel):
+class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
-    role: Role
+    role: ROLE
+
+    class Config:
+        from_attributes = True
+
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: ROLE
+
+
+class UserUpdate(BaseModel):
+    namee: str | None = None
+    email: EmailStr | None = None
+    password: str | None = None
+    role: ROLE | None = None

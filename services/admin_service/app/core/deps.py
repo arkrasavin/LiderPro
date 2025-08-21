@@ -1,4 +1,3 @@
-from email.header import Header
 from typing import Callable
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -14,11 +13,12 @@ def get_current_token_payload(
         token: str = Depends(_oauth),
         x_act_as: str | None = Header(None, alias="X-act-As")
 ) -> TokenPayload:
+
     return decode_token(token, request_role=x_act_as)
 
 
 def require_roles(*roles: str) -> Callable[[TokenPayload], TokenPayload]:
-    allowed = set(r.lower() for r in roles)
+    allowed = set(role.lower() for role in roles)
 
     def _checker(
             payload: TokenPayload = Depends(get_current_token_payload)

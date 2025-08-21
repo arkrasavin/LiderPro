@@ -9,8 +9,7 @@
     "realm": [
       {"name": "admin", "description": "Администратор"},
       {"name": "observer", "description": "Наблюдатель"},
-      {"name": "employee", "description": "Сотрудник"},
-      {"name":  "participant", "description": "Участник/Куратор"}
+      {"name":  "participant", "description": "Участник"}
     ]
   },
   "clients": [

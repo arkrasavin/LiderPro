@@ -3,10 +3,8 @@ from sqlalchemy.orm import sessionmaker
 
 from ..core.config import get_settings
 
-SQLALCHEMY_DATABASE_URL = str(get_settings().database_url)
-
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(str(get_settings().database_url), pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def get_db():
