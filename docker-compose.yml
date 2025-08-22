@@ -8,7 +8,9 @@ services:
     ports: [ "5432:5432" ]
 
   admin_service:
-    build: ./services/admin_service
+    build:
+      context: .
+      dockerfile: ./services/admin_service/Dockerfile
     depends_on: [ db ]
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
@@ -52,14 +54,15 @@ services:
       - ./deploy/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
 
   auth_service:
-    build: ./services/auth_service
+    build:
+      context: .
+      dockerfile: ./services/auth_service/Dockerfile
     depends_on: [ db ]
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - PYTHONPATH=/app
       - ALEMBIC_CONFIG=/app/alembic.ini
       - AUTH_SECRET_KEY=SECRET_KEY
-      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
       - KEYCLOAK_REALM=liderpro
       - KEYCLOAK_BASE=http://keycloak:8080
@@ -74,9 +77,10 @@ services:
     ports: [ "8011:8011" ]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload
 
-  employee_service:
+  employees_service:
     build:
-      context: ./services/employees_service
+      context: .
+      dockerfile: ./services/employees_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
@@ -88,9 +92,10 @@ services:
     ports: [ "8012:8012" ]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8012 --reload
 
-  department_service:
+  departments_service:
     build:
-      context: services/departments_service
+      context: .
+      dockerfile: ./services/departments_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
@@ -102,9 +107,10 @@ services:
     ports: [ "8013:8013" ]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8013 --reload
 
-  observer_service:
+  observers_service:
     build:
-      context: ./services/observers_service
+      context: .
+      dockerfile: ./services/observers_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
@@ -118,7 +124,8 @@ services:
 
   trainings_service:
     build:
-      context: ./services/trainings_service
+      context: .
+      dockerfile: ./services/trainings_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
@@ -132,7 +139,8 @@ services:
 
   statistics_service:
     build:
-      context: ./services/statistics_service
+      context: .
+      dockerfile: ./services/statistics_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
@@ -146,7 +154,8 @@ services:
 
   ewallet_service:
     build:
-      context: ./services/ewallet_service
+      context: .
+      dockerfile: ./services/ewallet_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
       - AUTH_PROVIDER=keycloak
