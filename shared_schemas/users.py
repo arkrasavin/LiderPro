@@ -23,7 +23,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    namee: str | None = None
+    name: str | None = None
     email: EmailStr | None = None
     password: str | None = None
     role: ROLE | None = None

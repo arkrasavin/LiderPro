@@ -13,80 +13,6 @@ from ..db.session import get_db
 router = APIRouter(prefix="/api/statistics", tags=["statistics"])
 
 
-@router.get("/{employee_id}", response_model=StatisticsRead)
-def stats_by_employee(
-        employee_id: int,
-        db: Session = Depends(get_db),
-        _=Depends(require_roles(["admin", "observer"]))
-):
-    row = db.execute(text(
-        """
-        SELECT id               as employee_id,
-               total_points     as points_sum,
-               effective_points as points_efficiency,
-               proactive_points as points_proactive
-        FROM employees_info
-        WHERE id = :eid
-        """
-    ), {"eid": employee_id}).mappings().first()
-
-    if not row:
-        raise HTTPException(404, "Employee not found")
-
-    # рейтинг в этом MVP пока не считаем (None),
-    # points_* возвращаем как есть
-    return StatisticsRead(
-        employee_id=row["employee_id"],
-        points_sum=row["points_sum"] or 0,
-        rating__overall=None,
-        rating__efficiency=None,
-        rating__proactive=None,
-        points_efficiency=row["points_efficiency"] or 0,
-        points_proactive=row["points_proactive"] or 0,
-    )
-
-
-@router.get("/top", response_model=list[StatisticsRead])
-def top_employees(
-        metric: str = Query(
-            "points_sum",
-            pattern="^(points_sum|points_efficiency|points_proactive)S"
-        ),
-        limit: int = Query(10, ge=1, le=100),
-        db: Session = Depends(get_db),
-        _=Depends(require_roles(["admin", "observer"]))
-):
-    field_map = {
-        "points_sum": "total_points",
-        "points_efficiency": "effective_points",
-        "points_proactive": "proactive_points",
-    }
-    col = field_map[metric]
-    rows = db.execute(
-        text(
-            f"""
-        SELECT id as employee_id, total_points, effective_points, proactive_points
-        FROM employees_info
-        ORDER BY {col} DESC 
-        LIMIT :lim
-    """
-        ), {"lim": limit}.mappings().all()
-    )
-
-    return [
-        StatisticsRead(
-            employee_id=r["employee_id"],
-            points_sum=r["total_points"] or 0,
-            rating__overall=None,
-            rating__efficiency=None,
-            rating__proactive=None,
-            points_efficiency=r["effective_points"] or 0,
-            points_proactive=r["proactive_points"] or 0,
-        )
-        for r in rows
-    ]
-
-
 def _pick_year(db: Session, year: int | None) -> int:
     if year:
         return year
@@ -188,9 +114,10 @@ def top_by_metric(
     ranks = db.execute(
         text(
             """
-            SELECT id, dense_rank() 
-                OVER (ORDER BY total_points DESC, id ASC) AS r_overall, dense_rank() 
-                OVER (ORDER BY effective_points DESC, id ASC) AS r_eff, dense_rank() 
+            SELECT id,
+                   dense_rank()
+                       OVER (ORDER BY total_points DESC, id ASC) AS r_overall, dense_rank()
+                OVER (ORDER BY effective_points DESC, id ASC) AS r_eff, dense_rank()
                 OVER (ORDER BY proactive_points DESC, id ASC) AS r_pro
             FROM employees_info
             """
@@ -202,13 +129,13 @@ def top_by_metric(
         rk = ranks_map.get(row["employee_id"], {})
         out.append(
             TopRow(
-                employee_id=r["employee_id"],
-                points_sum=r["total_points"] or 0,
+                employee_id=rk["employee_id"],
+                points_sum=rk["total_points"] or 0,
                 rating__overall=rk.get("r_overall"),
                 rating__efficiency=rk.get("r_eff"),
                 rating__proactive=rk.get("r_pro"),
-                points_efficiency=r["effective_points"] or 0,
-                points_proactive=r["proactive_points"] or 0,
+                points_efficiency=rk["effective_points"] or 0,
+                points_proactive=rk["proactive_points"] or 0,
             )
         )
 
@@ -262,3 +189,77 @@ def demographics(
         age_groups=age_groups,
         cities=cities,
     )
+
+
+# @router.get("/{employee_id}", response_model=StatisticsRead)
+# def stats_by_employee(
+#         employee_id: int,
+#         db: Session = Depends(get_db),
+#         _=Depends(require_roles(["admin", "observer"]))
+# ):
+#     row = db.execute(text(
+#         """
+#         SELECT id               as employee_id,
+#                total_points     as points_sum,
+#                effective_points as points_efficiency,
+#                proactive_points as points_proactive
+#         FROM employees_info
+#         WHERE id = :eid
+#         """
+#     ), {"eid": employee_id}).mappings().first()
+#
+#     if not row:
+#         raise HTTPException(404, "Employee not found")
+#
+#     # рейтинг в этом MVP пока не считаем (None),
+#     # points_* возвращаем как есть
+#     return StatisticsRead(
+#         employee_id=row["employee_id"],
+#         points_sum=row["points_sum"] or 0,
+#         rating__overall=None,
+#         rating__efficiency=None,
+#         rating__proactive=None,
+#         points_efficiency=row["points_efficiency"] or 0,
+#         points_proactive=row["points_proactive"] or 0,
+#     )
+
+
+# @router.get("/top", response_model=list[StatisticsRead])
+# def top_employees(
+#         metric: str = Query(
+#             "points_sum",
+#             pattern="^(points_sum|points_efficiency|points_proactive)$"
+#         ),
+#         limit: int = Query(10, ge=1, le=100),
+#         db: Session = Depends(get_db),
+#         _=Depends(require_roles(["admin", "observer"]))
+# ):
+#     field_map = {
+#         "points_sum": "total_points",
+#         "points_efficiency": "effective_points",
+#         "points_proactive": "proactive_points",
+#     }
+#     col = field_map[metric]
+#     rows = db.execute(
+#         text(
+#             f"""
+#         SELECT id as employee_id, total_points, effective_points, proactive_points
+#         FROM employees_info
+#         ORDER BY {col} DESC
+#         LIMIT :lim
+#     """
+#         ), {"lim": limit}.mappings().all()
+#     )
+#
+#     return [
+#         StatisticsRead(
+#             employee_id=r["employee_id"],
+#             points_sum=r["total_points"] or 0,
+#             rating__overall=None,
+#             rating__efficiency=None,
+#             rating__proactive=None,
+#             points_efficiency=r["effective_points"] or 0,
+#             points_proactive=r["proactive_points"] or 0,
+#         )
+#         for r in rows
+#     ]

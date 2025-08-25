@@ -52,3 +52,31 @@ def delete_observer(
         raise HTTPException(status_code=404, detail="Observer not found")
     db.delete(get_obs)
     db.commit()
+
+
+@router.get("", response_model=dict)
+def list_observers(
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin", "observer"]))
+):
+    rows = db.query(Observer).order_by(Observer.name).all()
+    out = {
+        "data": [ObserverOut.model_validate(row) for row in rows],
+        "meta": {"total_count": len(rows)}
+    }
+
+    return out
+
+
+@router.post("", response_model=ObserverOut, status_code=201)
+def create_observer(
+        payload: ObserverPatch,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin"]))
+):
+    obj = Observer(**payload.model_dump())
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+
+    return ObserverOut.model_validate(obj)

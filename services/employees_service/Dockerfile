@@ -6,7 +6,7 @@ COPY services/employees_service/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY services/empoloyee_service /app/
+COPY services/employees_service /app/
 
 COPY shared_schemas/ /app/shared_schemas/
 

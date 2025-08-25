@@ -42,7 +42,7 @@ def list_employees(
 
     if sort in {"name", "position", "company", "department", "city"}:
         query_empl = query_empl.order_by(getattr(Employee, sort))
-    total = db.execute(query_empl).scalar().all()
+    total = db.execute(query_empl).scalars().all()
     data = [
         EmployeeOut.model_validate(elem)
         for elem in total[offset:offset + limit]
@@ -65,8 +65,7 @@ def list_employees(
                 city=city,
                 remote_city=remote_city,
                 emp_ind=emp_ind,
-            ).items()
-            if value is not None
+            ).items() if value is not None
         }
     }
 
@@ -103,3 +102,52 @@ def update_employee(
     db.refresh(empl)
 
     return EmployeeOut.model_validate(empl)
+
+
+@router.post("", response_model=EmployeeOut, status_code=201)
+def create_employee(
+        payload: EmployeeUpdate,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin"]))
+):
+    obj = Employee(**payload.model_dump())
+
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+
+    return EmployeeOut.model_validate(obj)
+
+
+@router.patch("/{emp_id}", response_model=EmployeeOut)
+def path_employee(
+        emp_id: int,
+        payload: EmployeeUpdate,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin"]))
+):
+    obj = db.get(Employee, emp_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(obj, key, value)
+
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+
+    return EmployeeOut.model_validate(obj)
+
+
+@router.delete("/{emp_id}", status_code=204)
+def delete_employee(
+        emp_id: int,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin"]))
+):
+    obj = db.get(Employee, emp_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    db.delete(obj)
+    db.commit()

@@ -11,7 +11,7 @@ _oauth = OAuth2PasswordBearer(tokenUrl=get_settings().oauth_token_url)
 
 def get_current_token_payload(
         token: str = Depends(_oauth),
-        x_act_as: str | None = Header(None, alias="X-act-As")
+        x_act_as: str | None = Header(None, alias="X-Act-As")
 ) -> TokenPayload:
 
     return decode_token(token, request_role=x_act_as)

@@ -69,8 +69,38 @@ def patch_department(
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(empl, key, value)
+
     db.add(empl)
     db.commit()
     db.refresh(empl)
 
     return DepartmentOut.model_validate(empl)
+
+
+@router.patch("", response_model=DepartmentOut, status_code=201)
+def create_department(
+        payload: DepartmentPatch,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin"]))
+):
+    obj = Department(name=payload.name)
+
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+
+    return DepartmentOut.model_validate(obj)
+
+
+@router.delete("/{dep_id}", status_code=204)
+def delete_department(
+        dep_id: int,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin"]))
+):
+    obj = db.get(Department, dep_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    db.delete(obj)
+    db.commit()
