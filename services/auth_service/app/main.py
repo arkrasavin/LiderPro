@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth
+from .api import auth
 from .core.config import get_settings
 from .db.session import engine
 
