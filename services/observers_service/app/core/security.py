@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jose.utils import base64url_decode
 
 from ..core.config import get_settings
-from shared_schemas.security import TokenPayload
+from shared_schemas.security import TokenPayload, ROLE
 
 _JWKS_CACHE: Dict[str, Any] = {}
 _JWKS_TS: float = 0.0
@@ -18,8 +18,31 @@ _JWKS_TTL_SEC = 300
 _ALLOWED_ROLES = {"admin", "observer", "participant"}
 
 
-def _normalize_role(role: str) -> str:
-    return role.strip().lower()
+def _normalize_role(role: str) -> ROLE | None:
+    value = (role or "").strip().lower()
+    if value in ("admin", "observer", "participant"):
+        return value
+
+    if value in ("employee",):
+        return "participant"
+
+    if value in ("employee",):
+        return "observer"
+
+    return None
+
+
+def _extract_roles_from_claims(claims: dict) -> list[ROLE]:
+    roles: set[ROLE] = set()
+    for role in (claims.get("realm_access", {}) or {}).get("roles", []) or []:
+        norm_role = _normalize_role(role)
+        if norm_role:
+            roles.add(norm_role)
+    single = _normalize_role(claims.get("role"))
+    if single:
+        roles.add(single)
+
+    return sorted(roles)
 
 
 def _has_role(payload: Dict[str, Any], role: str) -> bool:
@@ -101,22 +124,41 @@ def _choose_effective_role(payload: Dict[str, Any], request_role: Optional[str])
 
 
 def _to_token_payload(
-        payload: Dict[str, Any],
+        claims: dict,
         request_role: Optional[str]
 ) -> TokenPayload:
-    role = payload.get("role") or _choose_effective_role(payload, request_role)
-    email = payload.get("email") or payload.get("preferred_username") or ""
-    if not email:
-        raise HTTPException(status_code=401, detail="Token has no email")
+    all_roles = _extract_roles_from_claims(claims)
+    effective: ROLE | None = None
+    if request_role:
+        req = _normalize_role(request_role)
+        if req not in {"observer", "participant"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="X-Act-As must be 'observer' or 'participant'"
+            )
+
+        if req not in all_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don`t have required role"
+            )
+
+        effective = req
+    else:
+        for role in ("admin", "observer", "participant"):
+            if role in all_roles:
+                effective = role
+                break
 
     return TokenPayload(
-        sub=payload.get("sub"),
-        email=email,
-        role=role,
-        exp=payload.get("exp"),
-        iat=payload.get("iat"),
-        iss=payload.get("iss"),
-        aud=payload.get("aud"),
+        sub=claims.get("sub"),
+        email=claims.get("email") or claims.get("preferred_username"),
+        role=effective,
+        roles=all_roles,
+        exp=claims.get("exp"),
+        iat=claims.get("iat"),
+        iss=claims.get("iss"),
+        aud=claims.get("aud"),
     )
 
 

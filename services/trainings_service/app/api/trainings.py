@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from shared_schemas import TrainingSnapshot
-from ..core.deps import require_roles
+from ..core.deps import require_roles, only_self_or_supervisor
 from ..db.session import get_db
 from ..models.training import Training
 
@@ -15,7 +15,8 @@ def read_snapshot(
         employee_id: int,
         year: int,
         db: Session = Depends(get_db),
-        _=Depends(require_roles(["admin", "observer"]))
+        _=Depends(require_roles(["admin", "observer", "participant"])),
+        __=Depends(only_self_or_supervisor)
 ):
     obj = db.execute(
         select(Training).where(

@@ -32,16 +32,6 @@ def get_effective_user(
         return user
 
     requested = (x_act_as or "").strip().lower()
-    role = (user.role or "").lower()
-    if role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": "Forbidden",
-                "message": "Impersonation allowed for admin only"
-            },
-        )
-
     if requested not in ALLOWED_ACT_AS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -52,16 +42,21 @@ def get_effective_user(
             },
         )
 
-    output = user.model_copy(update={"role": requested})
+    if requested not in user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "Forbidden",
+                "message": "You don`t have requested role"
+            }
+        )
 
-    return output
+    user.role = requested
+
+    return user
 
 
-def require_roles(
-        allowed: Iterable[ROLE],
-        *,
-        admin_always_ok: bool = True
-) -> Callable[[TokenPayload], TokenPayload]:
+def require_roles(allowed: Iterable[str]) -> Callable[[TokenPayload], TokenPayload]:
     allowed_set = {
         str(role).lower()
         for role in allowed
@@ -71,9 +66,6 @@ def require_roles(
         role = (user.role or "").lower()
         if role == "employee":
             role = "participant"
-        if admin_always_ok and role == "admin":
-            return user
-
         if role not in allowed_set:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

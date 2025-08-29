@@ -21,6 +21,7 @@ class TokenPayload(BaseModel):
     sub: str | None = None
     email: EmailStr | None = None
     role: ROLE | None = None
+    roles: list[ROLE] = []
     exp: int | None = None
     iat: int | None = None
     iss: str | None = None

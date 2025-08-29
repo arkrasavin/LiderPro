@@ -8,7 +8,7 @@ from starlette.status import HTTP_201_CREATED
 
 from shared_schemas import WalletEvent, Balance
 from ..db.session import get_db
-from ..core.deps import require_roles
+from ..core.deps import require_roles, only_self_or_supervisor
 from ..models.ewallet import WalletEventModel
 
 router = APIRouter(prefix="/api/ewallet", tags=["ewallet"])
@@ -22,7 +22,7 @@ def list_events(
         limit: int = Query(50, ge=1, le=500),
         offset: int = Query(0, ge=0),
         db: Session = Depends(get_db),
-        _=Depends(require_roles(["admin", "observer"]))
+        _=Depends(require_roles(["admin", "observer"])),
 ):
     stmt = select(WalletEventModel).where(WalletEventModel.employee_id == employee_id)
     if date_from:
@@ -50,7 +50,8 @@ def list_events(
 def get_balance(
         employee_id: int,
         db: Session = Depends(get_db),
-        _=Depends(require_roles(["admin", "observer", "participant"]))
+        _=Depends(require_roles(["admin", "observer", "participant"])),
+        __=Depends(only_self_or_supervisor)
 ):
     total = db.execute(
         text("""
