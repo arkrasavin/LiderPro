@@ -1,0 +1,1727 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — API Gateway
+  version: 1.0.0
+  description: Сводная спецификация всех микросервисов LiderPro.
+servers:
+- url: http://localhost:8080
+security:
+- OpenID: []
+paths:
+  /api/auth/login:
+    post:
+      tags:
+      - auth
+      summary: Войти по корпоративной почте и паролю
+      description: Возвращает пары токенов от Keycloak (access/refresh).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - email
+              - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@company.com
+                password:
+                  type: string
+                  example: P@ssw0rd
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - access_token
+                - refresh_token
+                - token_type
+                - expires_in
+                - refresh_expires_in
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    example: 300
+                  refresh_expires_in:
+                    type: integer
+                    example: 1800
+        '400':
+          description: Неверный ввод (пустая почта/пароль и т.п.)
+        '401':
+          description: Неверные учётные данные
+  /api/auth/refresh:
+    post:
+      tags:
+      - auth
+      summary: Обновить access токен по refresh токену
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Обновлённые токены
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - access_token
+                - refresh_token
+                - token_type
+                - expires_in
+                - refresh_expires_in
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    example: 300
+                  refresh_expires_in:
+                    type: integer
+                    example: 1800
+        '401':
+          description: Недействительный refresh токен
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Выйти (инвалидировать refresh токен)
+      description: Принимает refresh-токен и инвалидирует сессию.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '204':
+          description: No Content
+  /api/auth/password/forgot:
+    post:
+      tags:
+      - auth
+      summary: Запрос на сброс пароля (высылаем ссылку на корпоративную почту)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@company.com
+      responses:
+        '202':
+          description: Accepted — письмо будет отправлено (если учётка существует)
+  /api/auth/password/reset:
+    post:
+      tags:
+      - auth
+      summary: Сбросить пароль по токену из письма
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - token
+              - new_password
+              properties:
+                token:
+                  type: string
+                  description: Токен из письма
+                new_password:
+                  type: string
+                  minLength: 8
+      responses:
+        '204':
+          description: No Content
+  /api/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Текущий пользователь
+      description: Декодирует access-токен и возвращает информацию о пользователе.
+      security:
+      - OpenID: []
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: f4a6b...
+                  email:
+                    type: string
+                    format: email
+                  role:
+                    type: string
+                    enum:
+                    - admin
+                    - observer
+                    - participant
+        '401':
+          description: Нет или неверный токен
+  /api/departments:
+    get:
+      tags:
+      - departments
+      summary: Список отделов
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - $ref: '#/components/parameters/Common.limit'
+      - $ref: '#/components/parameters/Common.offset'
+      - name: name
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Department'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+    post:
+      tags:
+      - departments
+      summary: Создать отдел
+      x-roles:
+      - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  example: Отдел развития обучения
+      responses:
+        '201':
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+  /api/departments/{id}:
+    get:
+      tags:
+      - departments
+      summary: Получить отдел
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Не найдено
+    patch:
+      tags:
+      - departments
+      summary: Обновить отдел (частично)
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Ок
+        '404':
+          description: Не найдено
+    delete:
+      tags:
+      - departments
+      summary: Удалить отдел
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найдено
+  /api/employees_info:
+    get:
+      tags:
+      - employees_info
+      summary: Список сотрудников
+      description: Пагинированный список с фильтрами и сортировкой.
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - $ref: '#/components/parameters/Common.limit'
+      - $ref: '#/components/parameters/Common.offset'
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: email
+        in: query
+        schema:
+          type: string
+          format: email
+      - name: position
+        in: query
+        schema:
+          type: string
+      - name: company
+        in: query
+        schema:
+          type: string
+      - name: department
+        in: query
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: work_format
+        in: query
+        schema:
+          type: string
+          enum:
+          - Офис
+          - Удаленно
+          - Гибрид
+      - name: emp_date_from
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: emp_date_to
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - email
+          - position
+          - department
+          - city
+          - emp_date
+      responses:
+        '200':
+          description: Ок
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EmployeeInfo'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+              examples:
+                filtered:
+                  summary: Фильтр по отделу и городу
+                  value:
+                    data:
+                    - id: 101
+                      name: Иван Иванов
+                      email: ivan.ivanov@company.com
+                      position: Куратор
+                      company: Газпром нефть
+                      department: Дирекция обучения
+                      city: Санкт-Петербург
+                      work_format: Гибрид
+                      remote_city: null
+                      emp_date: '2019-03-01'
+                      birthday: '1990-11-22'
+                      emp_ind: EMP-000101
+                    meta:
+                      total_count: 1
+                      limit: 20
+                      offset: 0
+                      filters:
+                        department: Дирекция обучения
+                        city: Санкт-Петербург
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - employees_info
+      summary: Создать сотрудника
+      description: Создаёт запись employees_info. Поле id генерируется на сервере.
+      x-roles:
+      - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeInfo'
+            examples:
+              minimal:
+                summary: Минимальный набор
+                value:
+                  name: Мария Петрова
+                  email: m.petrovа@company.com
+                  position: Куратор
+              full:
+                summary: Полный пример
+                value:
+                  name: Александр Кузнецов
+                  email: a.kuznetsov@company.com
+                  position: Старший куратор
+                  company: Газпром нефть
+                  department: Учебный центр
+                  city: Тюмень
+                  work_format: Офис
+                  remote_city: null
+                  emp_date: '2015-05-16'
+                  birthday: '1988-02-10'
+                  emp_ind: EMP-000222
+      responses:
+        '201':
+          description: Создано
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URI новой записи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeInfo'
+              examples:
+                created:
+                  value:
+                    id: 222
+                    name: Александр Кузнецов
+                    email: a.kuznetsov@company.com
+                    position: Старший куратор
+                    company: Газпром нефть
+                    department: Учебный центр
+                    city: Тюмень
+                    work_format: Офис
+                    remote_city: null
+                    emp_date: '2015-05-16'
+                    birthday: '1988-02-10'
+                    emp_ind: EMP-000222
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicateEmail:
+                  summary: Дублирующий email
+                  value:
+                    error: Validation failed
+                    message: email already exists
+        '409':
+          description: Конфликт (например, email уже занят)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/employees_info/{id}:
+    get:
+      tags:
+      - employees_info
+      summary: Получить сотрудника по ID
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeInfo'
+              examples:
+                one:
+                  value:
+                    id: 101
+                    name: Иван Иванов
+                    email: ivan.ivanov@company.com
+                    position: Куратор
+                    company: Газпром нефть
+                    department: Дирекция обучения
+                    city: Санкт-Петербург
+                    work_format: Гибрид
+                    remote_city: null
+                    emp_date: '2019-03-01'
+                    birthday: '1990-11-22'
+                    emp_ind: EMP-000101
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - employees_info
+      summary: Полностью обновить запись
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeInfo'
+            examples:
+              replace:
+                value:
+                  id: 101
+                  name: Иван Иванов
+                  email: ivan.ivanov@company.com
+                  position: Куратор
+                  company: Газпром нефть
+                  department: Учебный центр
+                  city: Санкт-Петербург
+                  work_format: Гибрид
+                  remote_city: null
+                  emp_date: '2019-03-01'
+                  birthday: '1990-11-22'
+                  emp_ind: EMP-000101
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeInfo'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Конфликт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - employees_info
+      summary: Частично обновить запись
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Любые подмножества полей EmployeeInfo (кроме id)
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                position:
+                  type: string
+                company:
+                  type: string
+                department:
+                  type: string
+                city:
+                  type: string
+                work_format:
+                  type: string
+                  enum:
+                  - Офис
+                  - Удаленно
+                  - Гибрид
+                remote_city:
+                  type: string
+                  nullable: true
+                emp_date:
+                  type: string
+                  format: date
+                birthday:
+                  type: string
+                  format: date
+                emp_ind:
+                  type: string
+            examples:
+              updatePosition:
+                value:
+                  position: Ведущий куратор
+                  department: Учебный центр
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeInfo'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - employees_info
+      summary: Удалить запись
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/ewallet:
+    get:
+      tags:
+      - ewallet
+      summary: Список событий кошелька сотрудника
+      description: 'Возвращает операции кошелька по employee_id с фильтром по датам
+        и пагинацией.
+
+        '
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: employee_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: from
+        in: query
+        description: Нижняя граница (включительно), формат YYYY-MM-DD
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: Верхняя граница (включительно), формат YYYY-MM-DD
+        schema:
+          type: string
+          format: date
+      - $ref: '#/components/parameters/Common.limit'
+      - $ref: '#/components/parameters/Common.offset'
+      responses:
+        '200':
+          description: Ок
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WalletEvent'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - ewallet
+      summary: Добавить операцию кошелька
+      description: 'Создаёт запись начисления (`accrual`) или списания (`debit`).
+
+        **points ≥ 0** всегда. Для `debit` это стоимость товара в «лавке».
+
+        `occurred_at` можно не передавать — сервер поставит текущее время.
+
+        '
+      x-roles:
+      - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - employee_id
+              - kind
+              - points
+              properties:
+                employee_id:
+                  type: integer
+                  minimum: 1
+                  example: 101
+                kind:
+                  type: string
+                  enum:
+                  - accrual
+                  - debit
+                  example: debit
+                points:
+                  type: integer
+                  minimum: 0
+                  example: 250
+                  description: Неотрицательное число баллов.
+                comment:
+                  type: string
+                  nullable: true
+                  example: Покупка худи в лавке
+                occurred_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  example: '2025-06-10T09:30:00Z'
+      responses:
+        '201':
+          description: Создано
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URI новой записи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletEvent'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Конфликт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/ewallet/{id}:
+    get:
+      tags:
+      - ewallet
+      summary: Получить операцию по ID
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletEvent'
+        '404':
+          description: Не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - ewallet
+      summary: Удалить операцию
+      description: Мягкое или жёсткое удаление — как реализовано в сервисе.
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/ewallet/balance:
+    get:
+      tags:
+      - ewallet
+      summary: Получить текущий баланс сотрудника
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: employee_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+        '404':
+          description: Не найден сотрудник/баланс
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/observers:
+    get:
+      tags:
+      - observers
+      summary: Список наблюдателей
+      description: Возвращает список наблюдателей с пагинацией и фильтрами.
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - $ref: '#/components/parameters/Common.limit'
+      - $ref: '#/components/parameters/Common.offset'
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: email
+        in: query
+        schema:
+          type: string
+          format: email
+      - name: department_id
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Observer'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - observers
+      summary: Создать наблюдателя
+      description: Создаёт карточку наблюдателя. Поле `id` генерируется на сервере.
+      x-roles:
+      - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              - email
+              properties:
+                name:
+                  type: string
+                  example: Мария Петрова
+                email:
+                  type: string
+                  format: email
+                  example: m.petrovа@company.com
+                department_id:
+                  type: integer
+                  minimum: 1
+                  example: 3
+      responses:
+        '201':
+          description: Создано
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URI новой записи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Observer'
+        '400':
+          description: Ошибка валидации/конфликт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/observers/{id}:
+    get:
+      tags:
+      - observers
+      summary: Получить наблюдателя по ID
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Observer'
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - observers
+      summary: Частично обновить наблюдателя
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Любые подмножества полей Observer (кроме id)
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                department_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Observer'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - observers
+      summary: Удалить наблюдателя
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/statistics:
+    get:
+      tags:
+      - statistics
+      summary: Общая статистика (агрегаты)
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: year
+        in: query
+        schema:
+          type: integer
+          example: 2025
+      - name: quarter
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 4
+          example: 2
+      - name: department
+        in: query
+        schema:
+          type: string
+          example: Учебный центр
+      - $ref: '#/components/parameters/Common.limit'
+      - $ref: '#/components/parameters/Common.offset'
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatisticsGeneral'
+              examples:
+                aggregates:
+                  value:
+                    year: 2025
+                    quarter: 2
+                    data:
+                      total_points: 125430
+                      average_rating: 4.6
+                      curators_count: 317
+        '204':
+          description: No Content (нет данных для фильтров)
+  /api/statistics/users/{user_id}:
+    get:
+      tags:
+      - statistics
+      summary: Статистика по пользователю
+      description: "Возвращает статистику по пользователю за период.\nКатегории:\n\
+        \  - attendance — посещаемость\n  - demographics — демография (если применимо)\n\
+        \  - subscribe — подписки/участие (если применимо)\n"
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          example: 101
+      - name: category
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - attendance
+          - demographics
+          - subscribe
+      - name: year
+        in: query
+        schema:
+          type: integer
+          example: 2025
+      - name: quarter
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 4
+          example: 2
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/StatisticsUserAttendance'
+              examples:
+                attendanceQ2:
+                  summary: Посещаемость за Q2 2025
+                  value:
+                    user_id: 101
+                    year: 2025
+                    quarter: 2
+                    data:
+                      total_attended: 8
+                      average_attendance_rate: 89
+                      total_infosessions: 10
+                      attended_infosessions: 8
+        '204':
+          description: No Content (нет данных для данного пользователя/категории)
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/trainings:
+    get:
+      tags:
+      - trainings
+      summary: Список обучений
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - $ref: '#/components/parameters/Common.limit'
+      - $ref: '#/components/parameters/Common.offset'
+      - name: mentee_number
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+      - name: curator_training_date
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: certification
+        in: query
+        schema:
+          type: boolean
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - certification
+          - curator_training_date
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Training'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+    post:
+      tags:
+      - trainings
+      summary: Создать запись об обучении
+      x-roles:
+      - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Training'
+            examples:
+              sample:
+                value:
+                  adaptation: 12
+                  mentee_number: 4
+                  mentee_points: 120
+                  curator_training_date: '2025-06-20'
+                  training_format: Онлайн
+                  conference_presence: true
+                  certification: false
+                  introductory_conf_points: 10
+                  training_sessions:
+                  - session: 1
+                    date: '2025-06-05'
+                    points: 5
+                  - session: 2
+                    date: '2025-06-12'
+                    points: 10
+      responses:
+        '201':
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Training'
+  /api/trainings/{id}:
+    get:
+      tags:
+      - trainings
+      summary: Получить обучение
+      x-roles:
+      - admin
+      - observer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Training'
+        '404':
+          description: Не найдено
+    put:
+      tags:
+      - trainings
+      summary: Полное обновление
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Training'
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Training'
+        '400':
+          description: Ошибка валидации
+        '404':
+          description: Не найдено
+    patch:
+      tags:
+      - trainings
+      summary: Частичное обновление
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Подмножество полей Training
+      responses:
+        '200':
+          description: Ок
+        '400':
+          description: Ошибка валидации
+        '404':
+          description: Не найдено
+    delete:
+      tags:
+      - trainings
+      summary: Удалить запись
+      x-roles:
+      - admin
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найдено
+tags:
+- name: auth
+  description: Аутентификация и управление сессиями
+- name: departments
+  description: Справочник подразделений
+- name: employees_info
+  description: CRUD по карточкам сотрудников (кураторов)
+- name: ewallet
+  description: Операции с кошельком (транзакции и баланс)
+- name: observers
+  description: Управление наблюдателями
+- name: statistics
+  description: Агрегированная аналитика и отчёты
+- name: trainings
+  description: Учёт обучений
+components:
+  securitySchemes:
+    OpenID:
+      type: openIdConnect
+      openIdConnectUrl: ${KEYCLOAK_ISSUER}/.well-known/openid-configuration
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+          example: Validation failed
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    Meta:
+      type: object
+      properties:
+        total_count:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          default: 20
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+        filters:
+          type: object
+    EmployeeInfo:
+      type: object
+      required:
+      - id
+      - name
+      - email
+      - position
+      properties:
+        id:
+          type: integer
+          example: 101
+        name:
+          type: string
+          example: Иван Иванов
+        email:
+          type: string
+          format: email
+          example: ivan@company.com
+        position:
+          type: string
+          example: Менеджер
+        company:
+          type: string
+          example: Газпром
+        department:
+          type: string
+          example: Дирекция обучения
+        city:
+          type: string
+          example: Москва
+        work_format:
+          type: string
+          example: Офис/Удаленно/Гибрид
+        remote_city:
+          type: string
+          example: Омск
+        emp_date:
+          type: string
+          format: date
+          example: '2015-05-16'
+        birthday:
+          type: string
+          format: date
+          example: '1990-11-22'
+        emp_ind:
+          type: string
+          example: '123456'
+    TrainingSession:
+      type: object
+      required:
+      - session
+      - date
+      - points
+      properties:
+        session:
+          type: integer
+          minimum: 1
+          maximum: 6
+          example: 1
+        date:
+          type: string
+          format: date
+        points:
+          type: integer
+          minimum: 0
+    Training:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        adaptation:
+          type: integer
+          minimum: 0
+        mentee_number:
+          type: integer
+          minimum: 0
+        mentee_points:
+          type: integer
+          minimum: 0
+        curator_training_date:
+          type: string
+          format: date
+        training_format:
+          type: string
+          example: Онлайн
+        conference_presence:
+          type: boolean
+        certification:
+          type: boolean
+        introductory_conf_points:
+          type: integer
+          minimum: 0
+        training_sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingSession'
+    Observer:
+      type: object
+      required:
+      - id
+      - name
+      - email
+      properties:
+        id:
+          type: integer
+          example: 77
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+    Department:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    WalletEvent:
+      type: object
+      required:
+      - id
+      - employee_id
+      - kind
+      - points
+      - occurred_at
+      properties:
+        id:
+          type: integer
+        employee_id:
+          type: integer
+        kind:
+          type: string
+          enum:
+          - accrual
+          - debit
+        points:
+          type: integer
+          minimum: 0
+          description: 'Для kind=accrual — начисленные баллы; для kind=debit — списанные
+            баллы. Значение всегда неотрицательное (отрицательных значений не будет).
+
+            '
+        comment:
+          type: string
+          nullable: true
+        occurred_at:
+          type: string
+          format: date-time
+    Balance:
+      type: object
+      required:
+      - employee_id
+      - balance
+      properties:
+        employee_id:
+          type: integer
+        balance:
+          type: integer
+          minimum: 0
+    StatisticsGeneral:
+      type: object
+      properties:
+        year:
+          type: integer
+        quarter:
+          type: integer
+          minimum: 1
+          maximum: 4
+        data:
+          type: object
+          properties:
+            total_points:
+              type: integer
+              minimum: 0
+            average_rating:
+              type: number
+              format: float
+            curators_count:
+              type: integer
+              minimum: 0
+    StatisticsUserAttendance:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        year:
+          type: integer
+        quarter:
+          type: integer
+          minimum: 1
+          maximum: 4
+        data:
+          type: object
+          properties:
+            total_attended:
+              type: integer
+              minimum: 0
+            average_attendance_rate:
+              type: integer
+              minimum: 0
+              maximum: 100
+            total_infosessions:
+              type: integer
+              minimum: 0
+            attended_infosessions:
+              type: integer
+              minimum: 0
+  parameters:
+    Common.limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+    Common.offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  headers:
+    X-RateLimit-Limit:
+      schema:
+        type: integer
+      description: Максимум запросов в минуту (100).
+    X-RateLimit-Remaining:
+      schema:
+        type: integer
+      description: Остаток лимита в текущем окне.
+    X-RateLimit-Reset:
+      schema:
+        type: integer
+      description: Время в секундах до сброса окна.
