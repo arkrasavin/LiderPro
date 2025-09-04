@@ -26,3 +26,11 @@ class TokenPayload(BaseModel):
     iat: int | None = None
     iss: str | None = None
     aud: Union[str, list[str], None] = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
