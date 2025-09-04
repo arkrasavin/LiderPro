@@ -1,0 +1,183 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — E-Wallet Service
+  version: 1.0.0
+  description: |
+    Электронный кошелёк. Учитывает начисления и списания баллов.
+    Важно:
+      - Списание (kind=debit) отражает стоимость сувенирной продукции из «лавки».
+      - Значение points ВСЕГДА неотрицательное (≥ 0); отрицательных значений не будет.
+    Роли:
+      - admin: полный доступ (list/get/create/delete), просмотр баланса
+      - observer: чтение (list/get), просмотр баланса
+      - participant: (по умолчанию) нет; при необходимости можно выдать read-свой для собственного employee_id
+servers:
+  - url: http://localhost:8006
+security:
+  - OpenID: []
+tags:
+  - name: ewallet
+    description: Операции с кошельком (транзакции и баланс)
+
+paths:
+  /api/ewallet:
+    get:
+      tags: [ewallet]
+      summary: Список событий кошелька сотрудника
+      description: |
+        Возвращает операции кошелька по employee_id с фильтром по датам и пагинацией.
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: employee_id
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: from
+          in: query
+          description: Нижняя граница (включительно), формат YYYY-MM-DD
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Верхняя граница (включительно), формат YYYY-MM-DD
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Common.limit'
+        - $ref: '#/components/parameters/Common.offset'
+      responses:
+        '200':
+          description: Ок
+          headers:
+            X-RateLimit-Limit:     { $ref: '#/components/headers/X-RateLimit-Limit' }
+            X-RateLimit-Remaining: { $ref: '#/components/headers/X-RateLimit-Remaining' }
+            X-RateLimit-Reset:     { $ref: '#/components/headers/X-RateLimit-Reset' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/WalletEvent' }
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      tags: [ewallet]
+      summary: Добавить операцию кошелька
+      description: |
+        Создаёт запись начисления (`accrual`) или списания (`debit`).
+        **points ≥ 0** всегда. Для `debit` это стоимость товара в «лавке».
+        `occurred_at` можно не передавать — сервер поставит текущее время.
+      x-roles: ["admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_id, kind, points]
+              properties:
+                employee_id: { type: integer, minimum: 1, example: 101 }
+                kind:        { type: string, enum: [accrual, debit], example: debit }
+                points:
+                  type: integer
+                  minimum: 0
+                  example: 250
+                  description: "Неотрицательное число баллов."
+                comment:
+                  type: string
+                  nullable: true
+                  example: "Покупка худи в лавке"
+                occurred_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  example: "2025-06-10T09:30:00Z"
+      responses:
+        '201':
+          description: Создано
+          headers:
+            Location:
+              schema: { type: string }
+              description: URI новой записи
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalletEvent' }
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Конфликт
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/ewallet/{id}:
+    get:
+      tags: [ewallet]
+      summary: Получить операцию по ID
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WalletEvent' }
+        '404':
+          description: Не найдено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [ewallet]
+      summary: Удалить операцию
+      description: Мягкое или жёсткое удаление — как реализовано в сервисе.
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найдено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/ewallet/balance:
+    get:
+      tags: [ewallet]
+      summary: Получить текущий баланс сотрудника
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: employee_id
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Balance' }
+        '404':
+          description: Не найден сотрудник/баланс
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"

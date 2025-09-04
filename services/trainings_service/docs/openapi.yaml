@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Trainings Service
+  version: 1.0.0
+  description: |
+    Учёт обучения/мероприятий кураторов. Поля нормализованы: training_sessions — массив.
+servers:
+  - url: http://localhost:8003
+security:
+  - OpenID: []
+tags:
+  - name: trainings
+    description: Учёт обучений
+
+paths:
+  /api/trainings:
+    get:
+      tags: [trainings]
+      summary: Список обучений
+      x-roles: ["admin", "observer"]
+      parameters:
+        - $ref: '#/components/parameters/Common.limit'
+        - $ref: '#/components/parameters/Common.offset'
+        - name: mentee_number
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: curator_training_date
+          in: query
+          schema: { type: string, format: date }
+        - name: certification
+          in: query
+          schema: { type: boolean }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [certification, curator_training_date] }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Training' } }
+                  meta: { $ref: '#/components/schemas/Meta' }
+    post:
+      tags: [trainings]
+      summary: Создать запись об обучении
+      x-roles: ["admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Training' }
+            examples:
+              sample:
+                value:
+                  adaptation: 12
+                  mentee_number: 4
+                  mentee_points: 120
+                  curator_training_date: "2025-06-20"
+                  training_format: "Онлайн"
+                  conference_presence: true
+                  certification: false
+                  introductory_conf_points: 10
+                  training_sessions:
+                    - { session: 1, date: "2025-06-05", points: 5 }
+                    - { session: 2, date: "2025-06-12", points: 10 }
+      responses:
+        '201':
+          description: Создано
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Training' }
+
+  /api/trainings/{id}:
+    get:
+      tags: [trainings]
+      summary: Получить обучение
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Training' }
+        '404':
+          description: Не найдено
+    put:
+      tags: [trainings]
+      summary: Полное обновление
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Training' }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Training' }
+        '400': { description: Ошибка валидации }
+        '404': { description: Не найдено }
+    patch:
+      tags: [trainings]
+      summary: Частичное обновление
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Подмножество полей Training
+      responses:
+        '200': { description: Ок }
+        '400': { description: Ошибка валидации }
+        '404': { description: Не найдено }
+    delete:
+      tags: [trainings]
+      summary: Удалить запись
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: No Content }
+        '404': { description: Не найдено }
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"

@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Shared Components
+  version: 1.0.0
+components:
+  securitySchemes:
+    OpenID:
+      type: openIdConnect
+      openIdConnectUrl: "${KEYCLOAK_ISSUER}/.well-known/openid-configuration"
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Validation failed
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    Meta:
+      type: object
+      properties:
+        total_count: { type: integer, minimum: 0 }
+        limit:      { type: integer, minimum: 1, default: 20 }
+        offset:     { type: integer, minimum: 0, default: 0 }
+        filters:
+          type: object
+    EmployeeInfo:
+      type: object
+      required: [id, name, email, position]
+      properties:
+        id:          { type: integer, example: 101 }
+        name:        { type: string, example: "Иван Иванов" }
+        email:       { type: string, format: email, example: "ivan@company.com" }
+        position:    { type: string, example: "Менеджер" }
+        company:     { type: string, example: "Газпром" }
+        department:  { type: string, example: "Дирекция обучения" }
+        city:        { type: string, example: "Москва" }
+        work_format: { type: string, example: "Офис/Удаленно/Гибрид" }
+        remote_city: { type: string, example: "Омск" }
+        emp_date:    { type: string, format: date, example: "2015-05-16" }
+        birthday:    { type: string, format: date, example: "1990-11-22" }
+        emp_ind:     { type: string, example: "123456" }
+    TrainingSession:
+      type: object
+      required: [session, date, points]
+      properties:
+        session: { type: integer, minimum: 1, maximum: 6, example: 1 }
+        date:    { type: string, format: date }
+        points:  { type: integer, minimum: 0 }
+    Training:
+      type: object
+      properties:
+        id: { type: integer, example: 42 }
+        adaptation:            { type: integer, minimum: 0 }
+        mentee_number:         { type: integer, minimum: 0 }
+        mentee_points:         { type: integer, minimum: 0 }
+        curator_training_date: { type: string, format: date }
+        training_format:       { type: string, example: "Онлайн" }
+        conference_presence:   { type: boolean }
+        certification:         { type: boolean }
+        introductory_conf_points: { type: integer, minimum: 0 }
+        training_sessions:
+          type: array
+          items: { $ref: '#/components/schemas/TrainingSession' }
+    Observer:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:    { type: integer, example: 77 }
+        name:  { type: string }
+        email: { type: string, format: email }
+    Department:
+      type: object
+      required: [id, name]
+      properties:
+        id:   { type: integer }
+        name: { type: string }
+    WalletEvent:
+      type: object
+      required: [id, employee_id, kind, points, occurred_at]
+      properties:
+        id:          { type: integer }
+        employee_id: { type: integer }
+        # accrual | debit (но "списание" не представляем отрицательным числом)
+        kind:        { type: string, enum: [accrual, debit] }
+        points:
+          type: integer
+          minimum: 0
+          description: >
+            Для kind=accrual — начисленные баллы; для kind=debit — списанные баллы.
+            Значение всегда неотрицательное (отрицательных значений не будет).
+        comment:     { type: string, nullable: true }
+        occurred_at: { type: string, format: date-time }
+    Balance:
+      type: object
+      required: [employee_id, balance]
+      properties:
+        employee_id: { type: integer }
+        balance:     { type: integer, minimum: 0 }
+    StatisticsGeneral:
+      type: object
+      properties:
+        year:    { type: integer }
+        quarter: { type: integer, minimum: 1, maximum: 4 }
+        data:
+          type: object
+          properties:
+            total_points:   { type: integer, minimum: 0 }
+            average_rating: { type: number, format: float }
+            curators_count: { type: integer, minimum: 0 }
+    StatisticsUserAttendance:
+      type: object
+      properties:
+        user_id: { type: integer }
+        year:    { type: integer }
+        quarter: { type: integer, minimum: 1, maximum: 4 }
+        data:
+          type: object
+          properties:
+            total_attended:            { type: integer, minimum: 0 }
+            average_attendance_rate:   { type: integer, minimum: 0, maximum: 100 }
+            total_infosessions:        { type: integer, minimum: 0 }
+            attended_infosessions:     { type: integer, minimum: 0 }
+  parameters:
+    Common.limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, default: 20 }
+    Common.offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+  headers:
+    X-RateLimit-Limit:
+      schema: { type: integer }
+      description: Максимум запросов в минуту (100).
+    X-RateLimit-Remaining:
+      schema: { type: integer }
+      description: Остаток лимита в текущем окне.
+    X-RateLimit-Reset:
+      schema: { type: integer }
+      description: Время в секундах до сброса окна.

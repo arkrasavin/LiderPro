@@ -167,5 +167,28 @@ services:
     ports: [ "8017:8017" ]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8017 --reload
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: liderpro-swagger
+    profiles: ["docs"]
+    environment:
+      SWAGGER_JSON: /openapi.yaml
+    ports:
+      - "8088:8080"
+    networks:
+      - docs_net
+    volumes:
+      - ./gateway/openapi.yaml:/openapi.yaml:ro
+      - ./gateway/openapi.yaml:/spec/openapi.yaml:ro
+    restart: unless-stopped
+
+networks:
+  docs_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.1.0/24
+
 volumes:
   kc_db:

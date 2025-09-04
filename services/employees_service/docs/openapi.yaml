@@ -1,0 +1,317 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Employees Service
+  version: 1.0.0
+  description: |
+    Сервис сотрудников (employees_info). CRUD по карточкам кураторов.
+    Важно:
+      - USERS CRUD отсутствует (учётки создаёт/меняет Keycloak). Здесь только доменная сущность employees_info.
+      - Email должен быть корпоративный и уникальный.
+servers:
+  - url: http://localhost:8001
+security:
+  - OpenID: []
+tags:
+  - name: employees_info
+    description: CRUD по карточкам сотрудников (кураторов)
+
+paths:
+  /api/employees_info:
+    get:
+      tags: [employees_info]
+      summary: Список сотрудников
+      description: Пагинированный список с фильтрами и сортировкой.
+      x-roles: ["admin", "observer"]
+      parameters:
+        - $ref: '#/components/parameters/Common.limit'
+        - $ref: '#/components/parameters/Common.offset'
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: email
+          in: query
+          schema: { type: string, format: email }
+        - name: position
+          in: query
+          schema: { type: string }
+        - name: company
+          in: query
+          schema: { type: string }
+        - name: department
+          in: query
+          schema: { type: string }
+        - name: city
+          in: query
+          schema: { type: string }
+        - name: work_format
+          in: query
+          schema: { type: string, enum: ["Офис", "Удаленно", "Гибрид"] }
+        - name: emp_date_from
+          in: query
+          schema: { type: string, format: date }
+        - name: emp_date_to
+          in: query
+          schema: { type: string, format: date }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [name, email, position, department, city, emp_date]
+      responses:
+        '200':
+          description: Ок
+          headers:
+            X-RateLimit-Limit:     { $ref: '#/components/headers/X-RateLimit-Limit' }
+            X-RateLimit-Remaining: { $ref: '#/components/headers/X-RateLimit-Remaining' }
+            X-RateLimit-Reset:     { $ref: '#/components/headers/X-RateLimit-Reset' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/EmployeeInfo' }
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+              examples:
+                filtered:
+                  summary: Фильтр по отделу и городу
+                  value:
+                    data:
+                      - id: 101
+                        name: "Иван Иванов"
+                        email: "ivan.ivanov@company.com"
+                        position: "Куратор"
+                        company: "Газпром нефть"
+                        department: "Дирекция обучения"
+                        city: "Санкт-Петербург"
+                        work_format: "Гибрид"
+                        remote_city: null
+                        emp_date: "2019-03-01"
+                        birthday: "1990-11-22"
+                        emp_ind: "EMP-000101"
+                    meta:
+                      total_count: 1
+                      limit: 20
+                      offset: 0
+                      filters:
+                        department: "Дирекция обучения"
+                        city: "Санкт-Петербург"
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+    post:
+      tags: [employees_info]
+      summary: Создать сотрудника
+      description: Создаёт запись employees_info. Поле id генерируется на сервере.
+      x-roles: ["admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeInfo' }
+            examples:
+              minimal:
+                summary: Минимальный набор
+                value:
+                  name: "Мария Петрова"
+                  email: "m.petrovа@company.com"
+                  position: "Куратор"
+              full:
+                summary: Полный пример
+                value:
+                  name: "Александр Кузнецов"
+                  email: "a.kuznetsov@company.com"
+                  position: "Старший куратор"
+                  company: "Газпром нефть"
+                  department: "Учебный центр"
+                  city: "Тюмень"
+                  work_format: "Офис"
+                  remote_city: null
+                  emp_date: "2015-05-16"
+                  birthday: "1988-02-10"
+                  emp_ind: "EMP-000222"
+      responses:
+        '201':
+          description: Создано
+          headers:
+            Location:
+              schema: { type: string }
+              description: URI новой записи
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeInfo' }
+              examples:
+                created:
+                  value:
+                    id: 222
+                    name: "Александр Кузнецов"
+                    email: "a.kuznetsov@company.com"
+                    position: "Старший куратор"
+                    company: "Газпром нефть"
+                    department: "Учебный центр"
+                    city: "Тюмень"
+                    work_format: "Офис"
+                    remote_city: null
+                    emp_date: "2015-05-16"
+                    birthday: "1988-02-10"
+                    emp_ind: "EMP-000222"
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                duplicateEmail:
+                  summary: Дублирующий email
+                  value:
+                    error: "Validation failed"
+                    message: "email already exists"
+        '409':
+          description: Конфликт (например, email уже занят)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/employees_info/{id}:
+    get:
+      tags: [employees_info]
+      summary: Получить сотрудника по ID
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeInfo' }
+              examples:
+                one:
+                  value:
+                    id: 101
+                    name: "Иван Иванов"
+                    email: "ivan.ivanov@company.com"
+                    position: "Куратор"
+                    company: "Газпром нефть"
+                    department: "Дирекция обучения"
+                    city: "Санкт-Петербург"
+                    work_format: "Гибрид"
+                    remote_city: null
+                    emp_date: "2019-03-01"
+                    birthday: "1990-11-22"
+                    emp_ind: "EMP-000101"
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+    put:
+      tags: [employees_info]
+      summary: Полностью обновить запись
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeInfo' }
+            examples:
+              replace:
+                value:
+                  id: 101
+                  name: "Иван Иванов"
+                  email: "ivan.ivanov@company.com"
+                  position: "Куратор"
+                  company: "Газпром нефть"
+                  department: "Учебный центр"
+                  city: "Санкт-Петербург"
+                  work_format: "Гибрид"
+                  remote_city: null
+                  emp_date: "2019-03-01"
+                  birthday: "1990-11-22"
+                  emp_ind: "EMP-000101"
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeInfo' }
+        '400': { description: Ошибка валидации, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: Не найден, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '409': { description: Конфликт, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+    patch:
+      tags: [employees_info]
+      summary: Частично обновить запись
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Любые подмножества полей EmployeeInfo (кроме id)
+              properties:
+                name:        { type: string }
+                email:       { type: string, format: email }
+                position:    { type: string }
+                company:     { type: string }
+                department:  { type: string }
+                city:        { type: string }
+                work_format: { type: string, enum: ["Офис", "Удаленно", "Гибрид"] }
+                remote_city: { type: string, nullable: true }
+                emp_date:    { type: string, format: date }
+                birthday:    { type: string, format: date }
+                emp_ind:     { type: string }
+            examples:
+              updatePosition:
+                value:
+                  position: "Ведущий куратор"
+                  department: "Учебный центр"
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeInfo' }
+        '400': { description: Ошибка валидации, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: Не найден, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+    delete:
+      tags: [employees_info]
+      summary: Удалить запись
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"
