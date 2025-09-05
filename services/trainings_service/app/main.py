@@ -38,7 +38,7 @@ app.add_middleware(
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
-    spec_path = Path(__file__).resolve().parent.parent / "docs" / "openapi.json"
+    spec_path = Path(__file__).resolve().parent.parent / "docs" / "openapi.yaml"
     with open(spec_path, "r", encoding="utf-8") as fl:
         app.openapi_schema = yaml.safe_load(fl)
 
