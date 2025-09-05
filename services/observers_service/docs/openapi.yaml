@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Observers Service
+  version: 1.0.0
+  description: |
+    Сервис наблюдателей (observers).
+    Роли:
+      - admin: полный доступ (list/get/create/update/delete)
+      - observer: чтение (list/get)
+      - participant: доступа нет
+servers:
+  - url: http://localhost:8005
+security:
+  - OpenID: []
+tags:
+  - name: observers
+    description: Управление наблюдателями
+
+paths:
+  /api/observers:
+    get:
+      tags: [observers]
+      summary: Список наблюдателей
+      description: Возвращает список наблюдателей с пагинацией и фильтрами.
+      x-roles: ["admin", "observer"]
+      parameters:
+        - $ref: '#/components/parameters/Common.limit'
+        - $ref: '#/components/parameters/Common.offset'
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: email
+          in: query
+          schema: { type: string, format: email }
+        - name: department_id
+          in: query
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          headers:
+            X-RateLimit-Limit:     { $ref: '#/components/headers/X-RateLimit-Limit' }
+            X-RateLimit-Remaining: { $ref: '#/components/headers/X-RateLimit-Remaining' }
+            X-RateLimit-Reset:     { $ref: '#/components/headers/X-RateLimit-Reset' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Observer' }
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      tags: [observers]
+      summary: Создать наблюдателя
+      description: Создаёт карточку наблюдателя. Поле `id` генерируется на сервере.
+      x-roles: ["admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name:  { type: string, example: "Мария Петрова" }
+                email: { type: string, format: email, example: "m.petrovа@company.com" }
+                department_id: { type: integer, minimum: 1, example: 3 }
+      responses:
+        '201':
+          description: Создано
+          headers:
+            Location:
+              schema: { type: string }
+              description: URI новой записи
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observer' }
+        '400':
+          description: Ошибка валидации/конфликт
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/observers/{id}:
+    get:
+      tags: [observers]
+      summary: Получить наблюдателя по ID
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observer' }
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    patch:
+      tags: [observers]
+      summary: Частично обновить наблюдателя
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Любые подмножества полей Observer (кроме id)
+              properties:
+                name:  { type: string }
+                email: { type: string, format: email }
+                department_id: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observer' }
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [observers]
+      summary: Удалить наблюдателя
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"

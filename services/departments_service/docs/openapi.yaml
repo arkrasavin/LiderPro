@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Departments Service
+  version: 1.0.0
+  description: |
+    Справочник подразделений. Простая CRUD-сущность id+name.
+servers:
+  - url: http://localhost:8002
+security:
+  - OpenID: []
+tags:
+  - name: departments
+    description: Справочник подразделений
+
+paths:
+  /api/departments:
+    get:
+      tags: [departments]
+      summary: Список отделов
+      x-roles: ["admin", "observer"]
+      parameters:
+        - $ref: '#/components/parameters/Common.limit'
+        - $ref: '#/components/parameters/Common.offset'
+        - name: name
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Department' } }
+                  meta: { $ref: '#/components/schemas/Meta' }
+    post:
+      tags: [departments]
+      summary: Создать отдел
+      x-roles: ["admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, example: "Отдел развития обучения" }
+      responses:
+        '201':
+          description: Создано
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Department' }
+
+  /api/departments/{id}:
+    get:
+      tags: [departments]
+      summary: Получить отдел
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Department' }
+        '404': { description: Не найдено }
+    patch:
+      tags: [departments]
+      summary: Обновить отдел (частично)
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '200': { description: Ок }
+        '404': { description: Не найдено }
+    delete:
+      tags: [departments]
+      summary: Удалить отдел
+      x-roles: ["admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: No Content }
+        '404': { description: Не найдено }
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"

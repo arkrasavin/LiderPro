@@ -1,0 +1,107 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Statistics Service
+  version: 1.0.0
+  description: |
+    Агрегированная аналитика/дашборды.
+    Категории включают общую метрику и статистику по пользователю (attendance/demographics/subscribe).
+servers:
+  - url: http://localhost:8004
+security:
+  - OpenID: []
+tags:
+  - name: statistics
+    description: Агрегированная аналитика и отчёты
+
+paths:
+  /api/statistics:
+    get:
+      tags: [statistics]
+      summary: Общая статистика (агрегаты)
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer, example: 2025 }
+        - name: quarter
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 4, example: 2 }
+        - name: department
+          in: query
+          schema: { type: string, example: "Учебный центр" }
+        - $ref: '#/components/parameters/Common.limit'
+        - $ref: '#/components/parameters/Common.offset'
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatisticsGeneral' }
+              examples:
+                aggregates:
+                  value:
+                    year: 2025
+                    quarter: 2
+                    data:
+                      total_points: 125430
+                      average_rating: 4.6
+                      curators_count: 317
+        '204':
+          description: No Content (нет данных для фильтров)
+
+  /api/statistics/users/{user_id}:
+    get:
+      tags: [statistics]
+      summary: Статистика по пользователю
+      description: |
+        Возвращает статистику по пользователю за период.
+        Категории:
+          - attendance — посещаемость
+          - demographics — демография (если применимо)
+          - subscribe — подписки/участие (если применимо)
+      x-roles: ["admin", "observer"]
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, example: 101 }
+        - name: category
+          in: query
+          required: true
+          schema: { type: string, enum: [attendance, demographics, subscribe] }
+        - name: year
+          in: query
+          schema: { type: integer, example: 2025 }
+        - name: quarter
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 4, example: 2 }
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/StatisticsUserAttendance'
+              examples:
+                attendanceQ2:
+                  summary: Посещаемость за Q2 2025
+                  value:
+                    user_id: 101
+                    year: 2025
+                    quarter: 2
+                    data:
+                      total_attended: 8
+                      average_attendance_rate: 89
+                      total_infosessions: 10
+                      attended_infosessions: 8
+        '204':
+          description: No Content (нет данных для данного пользователя/категории)
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"

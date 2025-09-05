@@ -1,0 +1,194 @@
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: liderdb
+    ports: [ "5432:5432" ]
+
+  admin_service:
+    build:
+      context: .
+      dockerfile: ./services/admin_service/Dockerfile
+    depends_on: [ db ]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - PYTHONPATH=/app
+      - ALEMBIC_CONFIG=/app/alembic.ini
+      - AUTH_SECRET_KEY=SECRET_KEY
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+    volumes:
+      - ./services/admin_service:/app
+      - ./shared_schemas:/app/shared_schemas
+    ports: [ "8000:8000" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  keycloak-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - kc_db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    depends_on: [ keycloak-db ]
+    command: [ "start-dev", "--import-realm" ]
+    environment:
+      KC_DB: postgres
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: ./services/auth_service/Dockerfile
+    depends_on: [ db ]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - PYTHONPATH=/app
+      - ALEMBIC_CONFIG=/app/alembic.ini
+      - AUTH_SECRET_KEY=SECRET_KEY
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_REALM=liderpro
+      - KEYCLOAK_BASE=http://keycloak:8080
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/token
+      - KEYCLOAK_CLIENT_ID=backend
+      - KEYCLOAK_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
+      - KEYCLOAK_ADMIN_CLIENT_ID=backend
+      - KEYCLOAK_ADMIN_CLIENT_SECRET=CHANGE_ME_DEV_ONLY
+    volumes:
+      - ./services/auth_service:/app
+      - ./shared_schemas:/app/shared_schemas
+    ports: [ "8011:8011" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload
+
+  employees_service:
+    build:
+      context: .
+      dockerfile: ./services/employees_service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8012:8012" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8012 --reload
+
+  departments_service:
+    build:
+      context: .
+      dockerfile: ./services/departments_service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8013:8013" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8013 --reload
+
+  observers_service:
+    build:
+      context: .
+      dockerfile: ./services/observers_service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8014:8014" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8014 --reload
+
+  trainings_service:
+    build:
+      context: .
+      dockerfile: ./services/trainings_service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8015:8015" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8015 --reload
+
+  statistics_service:
+    build:
+      context: .
+      dockerfile: ./services/statistics_service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8016:8016" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8016 --reload
+
+  ewallet_service:
+    build:
+      context: .
+      dockerfile: ./services/ewallet_service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:pass@db:5432/liderdb
+      - AUTH_PROVIDER=keycloak
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/liderpro
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/liderpro/protocol/openid-connect/certs
+      - KEYCLOAK_AUDIENCE=account
+      - CORS_ORIGINS=*
+    depends_on: [ db ]
+    ports: [ "8017:8017" ]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8017 --reload
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: liderpro-swagger
+    profiles: ["docs"]
+    environment:
+      SWAGGER_JSON: /openapi.yaml
+    ports:
+      - "8088:8080"
+    networks:
+      - docs_net
+    volumes:
+      - ./gateway/openapi.yaml:/openapi.yaml:ro
+      - ./gateway/openapi.yaml:/spec/openapi.yaml:ro
+    restart: unless-stopped
+
+networks:
+  docs_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.1.0/24
+
+volumes:
+  kc_db:

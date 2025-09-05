@@ -1,0 +1,163 @@
+openapi: 3.0.3
+info:
+  title: LiderPro — Auth Proxy
+  version: 1.0.0
+  description: |
+    Прокси к Keycloak для входа по корпоративной почте и паролю, рефреш/логаут,
+    и сброса пароля с отправкой ссылки на корпоративную почту.
+servers:
+  - url: http://localhost:8007
+# По умолчанию все операции защищены OIDC, но для login/forgot/reset мы снимем защиту локально: security: []
+security:
+  - OpenID: []
+
+tags:
+  - name: auth
+    description: Аутентификация и управление сессиями
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Войти по корпоративной почте и паролю
+      description: Возвращает пары токенов от Keycloak (access/refresh).
+      security: []   # вход без токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email, example: "user@company.com" }
+                password: { type: string, example: "P@ssw0rd" }
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, refresh_token, token_type, expires_in, refresh_expires_in]
+                properties:
+                  access_token:       { type: string }
+                  refresh_token:      { type: string }
+                  token_type:         { type: string, example: "Bearer" }
+                  expires_in:         { type: integer, example: 300 }
+                  refresh_expires_in: { type: integer, example: 1800 }
+        '400':
+          description: Неверный ввод (пустая почта/пароль и т.п.)
+        '401':
+          description: Неверные учётные данные
+
+  /api/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Обновить access токен по refresh токену
+      security: []   # рефреш обычно без access-токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: Обновлённые токены
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, refresh_token, token_type, expires_in, refresh_expires_in]
+                properties:
+                  access_token:       { type: string }
+                  refresh_token:      { type: string }
+                  token_type:         { type: string, example: "Bearer" }
+                  expires_in:         { type: integer, example: 300 }
+                  refresh_expires_in: { type: integer, example: 1800 }
+        '401':
+            description: Недействительный refresh токен
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Выйти (инвалидировать refresh токен)
+      description: Принимает refresh-токен и инвалидирует сессию.
+      security: []   # допускается без access-токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '204':
+          description: No Content
+
+  /api/auth/password/forgot:
+    post:
+      tags: [auth]
+      summary: Запрос на сброс пароля (высылаем ссылку на корпоративную почту)
+      security: []   # без токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: "user@company.com" }
+      responses:
+        '202':
+          description: Accepted — письмо будет отправлено (если учётка существует)
+
+  /api/auth/password/reset:
+    post:
+      tags: [auth]
+      summary: Сбросить пароль по токену из письма
+      security: []   # без токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token:        { type: string, description: Токен из письма }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        '204':
+          description: No Content
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: Текущий пользователь
+      description: Декодирует access-токен и возвращает информацию о пользователе.
+      security:
+        - OpenID: []
+      responses:
+        '200':
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:    { type: string, example: "f4a6b..." }
+                  email: { type: string, format: email }
+                  role:  { type: string, enum: [admin, observer, participant] }
+        '401':
+          description: Нет или неверный токен
+
+components:
+  $ref: "../../../shared_openapi/components.yaml#/components"
