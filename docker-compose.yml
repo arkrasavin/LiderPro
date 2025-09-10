@@ -183,6 +183,14 @@ services:
     restart: unless-stopped
 
 networks:
+  default:
+    name: liderpro_net
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.2.0/24
+
   docs_net:
     driver: bridge
     ipam:

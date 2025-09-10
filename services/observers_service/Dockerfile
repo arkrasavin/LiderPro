@@ -1,14 +1,14 @@
 FROM python:3.12-slim
 
-WORKDIR /app
+WORKDIR /app/
 
 COPY services/observers_service/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY service/observers_service /app/
+COPY services/observers_service /app/
 
-COPY shared_schemas/ /app/shared_schemas
+COPY shared_schemas/ /app/shared_schemas/
 
 ENV PYTHONPATH=/app
 
