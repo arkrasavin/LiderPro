@@ -6,7 +6,7 @@ from pydantic import conint
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from shared_schemas import StatisticsRead, TopRow, DemographicsStats
+from shared_schemas import StatisticsRead, TopRow, DemographicsStats, OverallStats
 from ..core.deps import require_roles
 from ..db.session import get_db
 
@@ -158,27 +158,31 @@ def demographics(
         row["city"] or "_": int(row["c"])
         for row in city_rows
     }
-    age_rows = db.execute(text("""
-                               SELECT CASE
-                                          WHEN birthday IS NULL THEN 'unknown'
-                                          WHEN date_part('year', age(birthday)) BETWEEN 18 AND 25
-                                              THEN '18-25'
-                                          WHEN date_part('year', age(birthday)) BETWEEN 26 AND 35
-                                              THEN '26-35'
-                                          WHEN date_part('year', age(birthday)) BETWEEN 36 AND 45
-                                              THEN '36-45'
-                                          WHEN date_part('year', age(birthday)) BETWEEN 46 AND 55
-                                              THEN '46-55'
-                                          WHEN date_part('year', age(birthday)) BETWEEN 56 AND 65
-                                              THEN '56-65'
-                                          WHEN date_part('year', age(birthday)) BETWEEN 66 AND 75
-                                              THEN '66-75'
-                                          ELSE '76+'
-                                          END  AS bucket,
-                                      COUNT(*) AS c
-                               FROM employees_info
-                               GROUP BY bucket
-                               """)).mappings().all()
+    age_rows = db.execute(
+        text(
+            """
+            SELECT CASE
+                       WHEN birthday IS NULL THEN 'unknown'
+                       WHEN date_part('year', age(birthday)) BETWEEN 18 AND 25
+                           THEN '18-25'
+                       WHEN date_part('year', age(birthday)) BETWEEN 26 AND 35
+                           THEN '26-35'
+                       WHEN date_part('year', age(birthday)) BETWEEN 36 AND 45
+                           THEN '36-45'
+                       WHEN date_part('year', age(birthday)) BETWEEN 46 AND 55
+                           THEN '46-55'
+                       WHEN date_part('year', age(birthday)) BETWEEN 56 AND 65
+                           THEN '56-65'
+                       WHEN date_part('year', age(birthday)) BETWEEN 66 AND 75
+                           THEN '66-75'
+                       ELSE '76+'
+                       END  AS bucket,
+                   COUNT(*) AS c
+            FROM employees_info
+            GROUP BY bucket
+            """
+        )
+    ).mappings().all()
     age_groups = {
         row["bucket"]: int(row["c"])
         for row in age_rows
@@ -191,6 +195,46 @@ def demographics(
     )
 
 
-@router.get("/")
-def get_statistics():
-    ...
+@router.get("", response_model=OverallStats)
+def overall_stats(
+        year: int | None = Query(default=None, ge=2000, le=2100),
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin", "observer"]))
+):
+    agg = db.execute(
+        text(
+            """
+            SELECT COUNT(*)::int AS curators_count, COALESCE(SUM(wallet_balance), 0)::int AS wallet_balance_sum, COALESCE(SUM(writeoff_points), 0) ::int AS total_writeoff_points
+            FROM emplouees_info
+            """
+        )
+    ).mappings().first()
+    if year is None:
+        yr = db.execute(text(
+            """
+            SELECT COALESCE(MAX(year), EXTRACT(YEAR FROM NOW()) ::int) AS yr
+            FROM training
+            """
+        )).mappings().first()
+        year = int(yr["yr"]) if yr else date.today().year
+    rates = db.execute(text(
+        """
+        SELECT COALESCE(SUM(CASE WHEN t.conference_presence THEN 1 ELSE 0 END), 0)::float
+              / NULLIF(COUNT(e.id), 0) AS conferences_presence_rate, COALESCE(
+                SUM(CASE WHEN t.certification THEN 1 ELSE 0 END), 0)::float
+              / NULLIF(COUNT(e.id), 0) AS certification_rate, COALESCE(SUM(t.mentee_number), 0) ::int AS mentees_count
+        FROM employees_info e
+                 LEFT JOIN training t
+                           ON t.employee_id = e.id AND t.year = :year
+        """
+    ), {"year": year}).mappings().first()
+
+    return OverallStats(
+        year=year,
+        curators_count=int(agg["curators_count"]),
+        mentees_count=int(rates["mentees_count"] or 0),
+        conferences_presence_rate=float(rates["conferences_presence_rate"] or 0.0),
+        certification_rate=float(rates["certification_rate"] or 0.0),
+        wallet_balance_sum=int(agg["wallet_balance_sum"]),
+        total_writeoff_points=int(agg["total_writeoff_points"]),
+    )
