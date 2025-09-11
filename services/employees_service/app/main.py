@@ -6,11 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .api import employees
 from .db.session import engine
+from .models.base import Base
 
 settings = get_settings()
 
 
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
     yield
     try:
         engine.dispose()

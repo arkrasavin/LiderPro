@@ -13,6 +13,7 @@ settings = get_settings()
 
 
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
     yield
     try:
         engine.dispose()
