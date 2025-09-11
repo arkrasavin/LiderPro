@@ -1,6 +1,6 @@
 import os
 from functools import lru_cache
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -16,6 +16,8 @@ class Settings(BaseSettings):
         "http://localhost:8000",
         "http://127.0.0.1:8001",
     ]
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+
     auth_provider: str = "keycloak"  # 'local' | 'keycloak'
     keycloak_realm: str = "liderpro"
     keycloak_base: str = "http://keycloak:8080"
@@ -24,10 +26,6 @@ class Settings(BaseSettings):
     keycloak_client_secret: str = "CHANGE_ME_DEV_ONLY"
     keycloak_admin_client_id: str = "backend"
     keycloak_admin_client_secret: str = "CHANGE_ME_DEV_ONLY"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 @lru_cache

@@ -22,6 +22,7 @@ Auth (порт 8011):
     POST /auth/login — логин по корпоративной почте/паролю (Keycloak Direct Access Grants).
     POST /auth/refresh — обновить access по refresh.
     POST /auth/forgot-password — отправить ссылку на сброс пароля на корпоративную почту.
+    POST /auth/logout — выход из учетной записи.
 
 Admin (порт 8000):
 

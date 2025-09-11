@@ -103,7 +103,7 @@ async def logout(body: RefreshRequest):
     return
 
 
-@router.post("/password/forgot", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
 async def password_forgot(body: ForgotPasswordRequest):
     settings = get_settings()
     token_data = {
