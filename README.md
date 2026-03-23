@@ -1,9 +1,23 @@
-Директория /frontend добавлена под фронт.
-В директории /services находится backend микросервисов.
-В /services/shared_schemas DTO для фронта и работы микросервисов в целом.
-Запуск из корня проекта с помощью docker-compose.yml. 
-В каждом приложении свой Dockerfile который его запускает и устанавливает requirements.
+### Автоматизированные тесты
 
+Services:
+- auth_service
+- employees_service
+
+Сценарии:
+- login / refresh / logout
+- forgot-password negative case
+- RBAC and access checks
+- CRUD basic checks
+- validation errors
+- not found scenarios
+
+Запуск тестов:
+```bash
+docker compose build auth_service employees_service
+docker compose run --rm auth_service pytest tests -q
+docker compose run --rm employees_service pytest tests -q
+```
 
 Что уже работает:
 
