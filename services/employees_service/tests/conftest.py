@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from ..app.main import app
 from ..app.db.session import get_db
 from ..app.models.base import Base
-from ..app.core.deps import decode_token
+from ..app.core import deps
 from shared_schemas.security import TokenPayload
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_employees.db"
@@ -65,7 +65,7 @@ def mock_admin(monkeypatch):
             roles=["admin"],
         )
 
-    monkeypatch.setattr("app.core.deps.decode_token", fake_decode_token)
+    monkeypatch.setattr(deps, "decode_token", fake_decode_token)
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ def mock_observer(monkeypatch):
             roles=["observer"],
         )
 
-    monkeypatch.setattr("app.core.deps.decode_token", fake_decode_token)
+    monkeypatch.setattr(deps, "decode_token", fake_decode_token)
 
 
 @pytest.fixture
@@ -91,4 +91,4 @@ def mock_participant(monkeypatch):
             roles=["participant"],
         )
 
-    monkeypatch.setattr("app.core.deps.decode_token", fake_decode_token)
+    monkeypatch.setattr(deps, "decode_token", fake_decode_token)
