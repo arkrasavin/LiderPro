@@ -1,16 +1,16 @@
 ### Автоматизированные тесты
 
-Services:
-- auth_service
-- employees_service
-
-Сценарии:
-- login / refresh / logout
-- forgot-password negative case
-- RBAC and access checks
-- CRUD basic checks
-- validation errors
-- not found scenarios
+Текущее покрытие:
+- `auth_service`:
+  - login
+  - refresh
+  - logout
+  - forgot-password negative case
+- `employees_service`
+  - RBAC / access checks
+  - CRUD basic checks
+  - validation errors
+  - not found scenarios
 
 Запуск тестов:
 ```bash
