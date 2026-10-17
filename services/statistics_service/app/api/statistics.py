@@ -30,54 +30,6 @@ def _pick_year(db: Session, year: int | None) -> int:
     return int(row['y']) if row and row['y'] else date.today().year
 
 
-@router.get("/{employee_id}", response_model=StatisticsRead)
-def stats_by_employee(
-        employee_id: int,
-        db: Session = Depends(get_db),
-        _=Depends(require_roles(["admin", "observer", "participant"]))
-):
-    row = db.execute(
-        text(
-            """
-            SELECT e.id AS employee_id,
-                   e.total_points,
-                   e.effective_points,
-                   e.proactive_points
-            FROM employees_info e
-            WHERE e.id = :employee_id
-            """
-        ), {"employee_id": employee_id},
-    ).mappings().first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Employee not found")
-
-    ranks = db.execute(
-        text(
-            """
-            WITH r AS (SELECT id,
-                              dense_rank()
-                                  OVER (ORDER BY total_points DESC, id ASC) AS r_overall, dense_rank()
-                    OVER (ORDER BY effective_points DESC, id ASC) AS r_eff, dense_rank()
-                    OVER (ORDER BY proactive_points DESC, id ASC) AS r_pro
-                       FROM employees_info)
-            SELECT r_overall, r_eff, r_pro
-            FROM r
-            WHERE id = :employee_id
-            """
-        ), {"employee_id": employee_id},
-    ).mappings().first()
-
-    return StatisticsRead(
-        employee_id=row["employee_id"],
-        points_sum=row["total_points"] or 0,
-        rating__overall=(ranks["r_overall"] if ranks else None),
-        rating__efficiency=(ranks["r_eff"] if ranks else None),
-        rating__proactive=(ranks["r_pro"] if ranks else None),
-        points_efficiency=row["effective_points"] or 0,
-        points_proactive=row["proactive_points"] or 0,
-    )
-
-
 @router.get("/top", response_model=list[TopRow])
 def top_by_metric(
         metric: Annotated[
@@ -123,19 +75,19 @@ def top_by_metric(
             """
         )
     ).mappings().all()
-    ranks_map = {rank["id"] for rank in ranks}
+    ranks_map = {rank["id"]: rank for rank in ranks}
     out: list[TopRow] = []
     for row in rows:
         rk = ranks_map.get(row["employee_id"], {})
         out.append(
             TopRow(
-                employee_id=rk["employee_id"],
-                points_sum=rk["total_points"] or 0,
+                employee_id=row["employee_id"],
+                points_sum=row["total_points"] or 0,
                 rating__overall=rk.get("r_overall"),
                 rating__efficiency=rk.get("r_eff"),
                 rating__proactive=rk.get("r_pro"),
-                points_efficiency=rk["effective_points"] or 0,
-                points_proactive=rk["proactive_points"] or 0,
+                points_efficiency=row["effective_points"] or 0,
+                points_proactive=row["proactive_points"] or 0,
             )
         )
 
@@ -194,3 +146,51 @@ def demographics(
 @router.get("/")
 def get_statistics():
     ...
+
+
+@router.get("/{employee_id}", response_model=StatisticsRead)
+def stats_by_employee(
+        employee_id: int,
+        db: Session = Depends(get_db),
+        _=Depends(require_roles(["admin", "observer", "participant"]))
+):
+    row = db.execute(
+        text(
+            """
+            SELECT e.id AS employee_id,
+                   e.total_points,
+                   e.effective_points,
+                   e.proactive_points
+            FROM employees_info e
+            WHERE e.id = :employee_id
+            """
+        ), {"employee_id": employee_id},
+    ).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    ranks = db.execute(
+        text(
+            """
+            WITH r AS (SELECT id,
+                              dense_rank()
+                                  OVER (ORDER BY total_points DESC, id ASC) AS r_overall, dense_rank()
+                    OVER (ORDER BY effective_points DESC, id ASC) AS r_eff, dense_rank()
+                    OVER (ORDER BY proactive_points DESC, id ASC) AS r_pro
+                       FROM employees_info)
+            SELECT r_overall, r_eff, r_pro
+            FROM r
+            WHERE id = :employee_id
+            """
+        ), {"employee_id": employee_id},
+    ).mappings().first()
+
+    return StatisticsRead(
+        employee_id=row["employee_id"],
+        points_sum=row["total_points"] or 0,
+        rating__overall=(ranks["r_overall"] if ranks else None),
+        rating__efficiency=(ranks["r_eff"] if ranks else None),
+        rating__proactive=(ranks["r_pro"] if ranks else None),
+        points_efficiency=row["effective_points"] or 0,
+        points_proactive=row["proactive_points"] or 0,
+    )

@@ -97,7 +97,7 @@ def only_self_or_supervisor(
         if my_id != employee_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={"Participant may access only their own data"}
+                detail="Participant may access only their own data"
             )
 
     return user

@@ -26,9 +26,6 @@ def _normalize_role(role: str) -> ROLE | None:
     if value in ("employee",):
         return "participant"
 
-    if value in ("employee",):
-        return "observer"
-
     return None
 
 

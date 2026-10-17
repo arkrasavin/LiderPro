@@ -34,11 +34,12 @@ def patch_observer(
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(get_obs, key, value)
-        db.add(get_obs)
-        db.commit()
-        db.refresh(get_obs)
 
-    return ObserverOut.model_validate(data)
+    db.add(get_obs)
+    db.commit()
+    db.refresh(get_obs)
+
+    return ObserverOut.model_validate(get_obs)
 
 
 @router.delete("/{obs_id}", status_code=204)

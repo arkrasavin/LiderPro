@@ -56,7 +56,7 @@ def get_balance(
     total = db.execute(
         text("""
              SELECT wallet_balance
-             FROM employee
+             FROM employees_info
              WHERE id = :eid
              """
              ), {"eid": employee_id}).first()

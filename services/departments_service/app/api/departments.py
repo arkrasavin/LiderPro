@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from ..db.session import get_db
@@ -31,7 +31,7 @@ def list_departments(
     elif sort == "-name":
         stmt = stmt.order_by(Department.name.desc())
 
-    total = db.execute(select(Department).count()).scalar()
+    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar()
     rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
 
     return {
