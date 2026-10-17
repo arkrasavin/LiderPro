@@ -1,3 +1,4 @@
+![API tests](https://github.com/arkrasavin/LiderPro/actions/workflows/tests.yml/badge.svg)
 # MVP LiderPro
 
 ### Автоматизированные тесты
